@@ -1,0 +1,1092 @@
+{
+  "Blooketstudio": {
+    "password": "Growgarden1@",
+    "displayName": "Blooketstudio",
+    "coins": 865,
+    "tokens": 100,
+    "opened": 0,
+    "inventory": [
+      {
+        "id": "blook_admin_0_0",
+        "pack": "BOT",
+        "item": "🖥️",
+        "rarity": "Common",
+        "pi": 0,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_0_1",
+        "pack": "BOT",
+        "item": "🤖",
+        "rarity": "Rare",
+        "pi": 0,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_0_2",
+        "pack": "BOT",
+        "item": "🐱",
+        "rarity": "Epic",
+        "pi": 0,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_0_3",
+        "pack": "BOT",
+        "item": "💾",
+        "rarity": "Chroma",
+        "pi": 0,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_0_4",
+        "pack": "BOT",
+        "item": "🌟",
+        "rarity": "Mythic",
+        "pi": 0,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_1_0",
+        "pack": "BUG",
+        "item": "🐞",
+        "rarity": "Common",
+        "pi": 1,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_1_1",
+        "pack": "BUG",
+        "item": "🪲",
+        "rarity": "Rare",
+        "pi": 1,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_1_2",
+        "pack": "BUG",
+        "item": "🐛",
+        "rarity": "Epic",
+        "pi": 1,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_1_3",
+        "pack": "BUG",
+        "item": "🦋",
+        "rarity": "Chroma",
+        "pi": 1,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_1_4",
+        "pack": "BUG",
+        "item": "💎",
+        "rarity": "Mythic",
+        "pi": 1,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_2_0",
+        "pack": "DINO",
+        "item": "🦕",
+        "rarity": "Common",
+        "pi": 2,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_2_1",
+        "pack": "DINO",
+        "item": "🦖",
+        "rarity": "Rare",
+        "pi": 2,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_2_2",
+        "pack": "DINO",
+        "item": "🥚",
+        "rarity": "Epic",
+        "pi": 2,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_2_3",
+        "pack": "DINO",
+        "item": "🌋",
+        "rarity": "Chroma",
+        "pi": 2,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_2_4",
+        "pack": "DINO",
+        "item": "🌌",
+        "rarity": "Mythic",
+        "pi": 2,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_3_0",
+        "pack": "CANDY",
+        "item": "🍭",
+        "rarity": "Common",
+        "pi": 3,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_3_1",
+        "pack": "CANDY",
+        "item": "🍬",
+        "rarity": "Rare",
+        "pi": 3,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_3_2",
+        "pack": "CANDY",
+        "item": "🍫",
+        "rarity": "Epic",
+        "pi": 3,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_3_3",
+        "pack": "CANDY",
+        "item": "🧁",
+        "rarity": "Chroma",
+        "pi": 3,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_3_4",
+        "pack": "CANDY",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 3,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_4_0",
+        "pack": "FRUIT",
+        "item": "🍉",
+        "rarity": "Common",
+        "pi": 4,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_4_1",
+        "pack": "FRUIT",
+        "item": "🍓",
+        "rarity": "Rare",
+        "pi": 4,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_4_2",
+        "pack": "FRUIT",
+        "item": "🍍",
+        "rarity": "Epic",
+        "pi": 4,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_4_3",
+        "pack": "FRUIT",
+        "item": "🥝",
+        "rarity": "Chroma",
+        "pi": 4,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_4_4",
+        "pack": "FRUIT",
+        "item": "🌈",
+        "rarity": "Mythic",
+        "pi": 4,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_5_0",
+        "pack": "MAGIC",
+        "item": "🪄",
+        "rarity": "Common",
+        "pi": 5,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_5_1",
+        "pack": "MAGIC",
+        "item": "🔮",
+        "rarity": "Rare",
+        "pi": 5,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_5_2",
+        "pack": "MAGIC",
+        "item": "🧙",
+        "rarity": "Epic",
+        "pi": 5,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_5_3",
+        "pack": "MAGIC",
+        "item": "✨",
+        "rarity": "Chroma",
+        "pi": 5,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_5_4",
+        "pack": "MAGIC",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 5,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_6_0",
+        "pack": "MUSIC",
+        "item": "🎸",
+        "rarity": "Common",
+        "pi": 6,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_6_1",
+        "pack": "MUSIC",
+        "item": "🎹",
+        "rarity": "Rare",
+        "pi": 6,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_6_2",
+        "pack": "MUSIC",
+        "item": "🎧",
+        "rarity": "Epic",
+        "pi": 6,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_6_3",
+        "pack": "MUSIC",
+        "item": "🎤",
+        "rarity": "Chroma",
+        "pi": 6,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_6_4",
+        "pack": "MUSIC",
+        "item": "🎶",
+        "rarity": "Mythic",
+        "pi": 6,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_7_0",
+        "pack": "RETRO",
+        "item": "👾",
+        "rarity": "Common",
+        "pi": 7,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_7_1",
+        "pack": "RETRO",
+        "item": "🕹️",
+        "rarity": "Rare",
+        "pi": 7,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_7_2",
+        "pack": "RETRO",
+        "item": "📺",
+        "rarity": "Epic",
+        "pi": 7,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_7_3",
+        "pack": "RETRO",
+        "item": "💿",
+        "rarity": "Chroma",
+        "pi": 7,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_7_4",
+        "pack": "RETRO",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 7,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_8_0",
+        "pack": "SPACE",
+        "item": "👽",
+        "rarity": "Common",
+        "pi": 8,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_8_1",
+        "pack": "SPACE",
+        "item": "🚀",
+        "rarity": "Rare",
+        "pi": 8,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_8_2",
+        "pack": "SPACE",
+        "item": "🪐",
+        "rarity": "Epic",
+        "pi": 8,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_8_3",
+        "pack": "SPACE",
+        "item": "🌌",
+        "rarity": "Chroma",
+        "pi": 8,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_8_4",
+        "pack": "SPACE",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 8,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_9_0",
+        "pack": "AUTUMN",
+        "item": "🍁",
+        "rarity": "Common",
+        "pi": 9,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_9_1",
+        "pack": "AUTUMN",
+        "item": "🎃",
+        "rarity": "Rare",
+        "pi": 9,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_9_2",
+        "pack": "AUTUMN",
+        "item": "🦊",
+        "rarity": "Epic",
+        "pi": 9,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_9_3",
+        "pack": "AUTUMN",
+        "item": "☕",
+        "rarity": "Chroma",
+        "pi": 9,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_9_4",
+        "pack": "AUTUMN",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 9,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_10_0",
+        "pack": "COMBAT",
+        "item": "🛡️",
+        "rarity": "Common",
+        "pi": 10,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_10_1",
+        "pack": "COMBAT",
+        "item": "⚔️",
+        "rarity": "Rare",
+        "pi": 10,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_10_2",
+        "pack": "COMBAT",
+        "item": "🏹",
+        "rarity": "Epic",
+        "pi": 10,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_10_3",
+        "pack": "COMBAT",
+        "item": "💥",
+        "rarity": "Chroma",
+        "pi": 10,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_10_4",
+        "pack": "COMBAT",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 10,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_11_0",
+        "pack": "PIRATE",
+        "item": "🏴‍☠️",
+        "rarity": "Common",
+        "pi": 11,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_11_1",
+        "pack": "PIRATE",
+        "item": "⚓",
+        "rarity": "Rare",
+        "pi": 11,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_11_2",
+        "pack": "PIRATE",
+        "item": "🦜",
+        "rarity": "Epic",
+        "pi": 11,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_11_3",
+        "pack": "PIRATE",
+        "item": "💰",
+        "rarity": "Chroma",
+        "pi": 11,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_11_4",
+        "pack": "PIRATE",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 11,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_12_0",
+        "pack": "SAFARI",
+        "item": "🦁",
+        "rarity": "Common",
+        "pi": 12,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_12_1",
+        "pack": "SAFARI",
+        "item": "🐘",
+        "rarity": "Rare",
+        "pi": 12,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_12_2",
+        "pack": "SAFARI",
+        "item": "🦒",
+        "rarity": "Epic",
+        "pi": 12,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_12_3",
+        "pack": "SAFARI",
+        "item": "🐯",
+        "rarity": "Chroma",
+        "pi": 12,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_12_4",
+        "pack": "SAFARI",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 12,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_13_0",
+        "pack": "SCI-FI",
+        "item": "🤖",
+        "rarity": "Common",
+        "pi": 13,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_13_1",
+        "pack": "SCI-FI",
+        "item": "🛸",
+        "rarity": "Rare",
+        "pi": 13,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_13_2",
+        "pack": "SCI-FI",
+        "item": "🔬",
+        "rarity": "Epic",
+        "pi": 13,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_13_3",
+        "pack": "SCI-FI",
+        "item": "🛰️",
+        "rarity": "Chroma",
+        "pi": 13,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_13_4",
+        "pack": "SCI-FI",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 13,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_14_0",
+        "pack": "SPOOKY",
+        "item": "🎃",
+        "rarity": "Common",
+        "pi": 14,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_14_1",
+        "pack": "SPOOKY",
+        "item": "👻",
+        "rarity": "Rare",
+        "pi": 14,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_14_2",
+        "pack": "SPOOKY",
+        "item": "🦇",
+        "rarity": "Epic",
+        "pi": 14,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_14_3",
+        "pack": "SPOOKY",
+        "item": "💀",
+        "rarity": "Chroma",
+        "pi": 14,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_14_4",
+        "pack": "SPOOKY",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 14,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_15_0",
+        "pack": "SPORTS",
+        "item": "⚽",
+        "rarity": "Common",
+        "pi": 15,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_15_1",
+        "pack": "SPORTS",
+        "item": "🏀",
+        "rarity": "Rare",
+        "pi": 15,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_15_2",
+        "pack": "SPORTS",
+        "item": "🏈",
+        "rarity": "Epic",
+        "pi": 15,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_15_3",
+        "pack": "SPORTS",
+        "item": "🏆",
+        "rarity": "Chroma",
+        "pi": 15,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_15_4",
+        "pack": "SPORTS",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 15,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_16_0",
+        "pack": "SUMMER",
+        "item": "😎",
+        "rarity": "Common",
+        "pi": 16,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_16_1",
+        "pack": "SUMMER",
+        "item": "🏖️",
+        "rarity": "Rare",
+        "pi": 16,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_16_2",
+        "pack": "SUMMER",
+        "item": "🩴",
+        "rarity": "Epic",
+        "pi": 16,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_16_3",
+        "pack": "SUMMER",
+        "item": "🌊",
+        "rarity": "Chroma",
+        "pi": 16,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_16_4",
+        "pack": "SUMMER",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 16,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_17_0",
+        "pack": "AQUATIC",
+        "item": "🐟",
+        "rarity": "Common",
+        "pi": 17,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_17_1",
+        "pack": "AQUATIC",
+        "item": "🦈",
+        "rarity": "Rare",
+        "pi": 17,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_17_2",
+        "pack": "AQUATIC",
+        "item": "🐙",
+        "rarity": "Epic",
+        "pi": 17,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_17_3",
+        "pack": "AQUATIC",
+        "item": "🐳",
+        "rarity": "Chroma",
+        "pi": 17,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_17_4",
+        "pack": "AQUATIC",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 17,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_18_0",
+        "pack": "DESSERT",
+        "item": "🍰",
+        "rarity": "Common",
+        "pi": 18,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_18_1",
+        "pack": "DESSERT",
+        "item": "🍩",
+        "rarity": "Rare",
+        "pi": 18,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_18_2",
+        "pack": "DESSERT",
+        "item": "🍪",
+        "rarity": "Epic",
+        "pi": 18,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_18_3",
+        "pack": "DESSERT",
+        "item": "🍮",
+        "rarity": "Chroma",
+        "pi": 18,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_18_4",
+        "pack": "DESSERT",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 18,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_19_0",
+        "pack": "OUTBACK",
+        "item": "🦘",
+        "rarity": "Common",
+        "pi": 19,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_19_1",
+        "pack": "OUTBACK",
+        "item": "🐊",
+        "rarity": "Rare",
+        "pi": 19,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_19_2",
+        "pack": "OUTBACK",
+        "item": "🪃",
+        "rarity": "Epic",
+        "pi": 19,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_19_3",
+        "pack": "OUTBACK",
+        "item": "🐨",
+        "rarity": "Chroma",
+        "pi": 19,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_19_4",
+        "pack": "OUTBACK",
+        "item": "💜",
+        "rarity": "Mythic",
+        "pi": 19,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_20_0",
+        "pack": "OG",
+        "item": "📸",
+        "rarity": "Common",
+        "pi": 20,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_20_1",
+        "pack": "OG",
+        "item": "🐱",
+        "rarity": "Rare",
+        "pi": 20,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_20_2",
+        "pack": "OG",
+        "item": "📱",
+        "rarity": "Epic",
+        "pi": 20,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_20_3",
+        "pack": "OG",
+        "item": "💿",
+        "rarity": "Chroma",
+        "pi": 20,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_20_4",
+        "pack": "OG",
+        "item": "✨",
+        "rarity": "Mythic",
+        "pi": 20,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_21_0",
+        "pack": "ANKHA",
+        "item": "🟡",
+        "rarity": "Common",
+        "pi": 21,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_21_1",
+        "pack": "ANKHA",
+        "item": "🐱",
+        "rarity": "Rare",
+        "pi": 21,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_21_2",
+        "pack": "ANKHA",
+        "item": "👑",
+        "rarity": "Epic",
+        "pi": 21,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_21_3",
+        "pack": "ANKHA",
+        "item": "🐈",
+        "rarity": "Chroma",
+        "pi": 21,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_21_4",
+        "pack": "ANKHA",
+        "item": "✨",
+        "rarity": "Mythic",
+        "pi": 21,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_22_0",
+        "pack": "TIME",
+        "item": "🕰️",
+        "rarity": "Common",
+        "pi": 22,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_22_1",
+        "pack": "TIME",
+        "item": "⌛",
+        "rarity": "Rare",
+        "pi": 22,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_22_2",
+        "pack": "TIME",
+        "item": "⏱️",
+        "rarity": "Epic",
+        "pi": 22,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_22_3",
+        "pack": "TIME",
+        "item": "⏳",
+        "rarity": "Chroma",
+        "pi": 22,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_22_4",
+        "pack": "TIME",
+        "item": "🧭",
+        "rarity": "Mythic",
+        "pi": 22,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_23_0",
+        "pack": "VIDEO GAME",
+        "item": "🕹️",
+        "rarity": "Common",
+        "pi": 23,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_23_1",
+        "pack": "VIDEO GAME",
+        "item": "👾",
+        "rarity": "Rare",
+        "pi": 23,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_23_2",
+        "pack": "VIDEO GAME",
+        "item": "🎮",
+        "rarity": "Epic",
+        "pi": 23,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_23_3",
+        "pack": "VIDEO GAME",
+        "item": "🟦",
+        "rarity": "Chroma",
+        "pi": 23,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_23_4",
+        "pack": "VIDEO GAME",
+        "item": "⭐",
+        "rarity": "Mythic",
+        "pi": 23,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_24_0",
+        "pack": "ICE MONSTERS",
+        "item": "❄️",
+        "rarity": "Common",
+        "pi": 24,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_24_1",
+        "pack": "ICE MONSTERS",
+        "item": "👹",
+        "rarity": "Rare",
+        "pi": 24,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_24_2",
+        "pack": "ICE MONSTERS",
+        "item": "🧊",
+        "rarity": "Epic",
+        "pi": 24,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_24_3",
+        "pack": "ICE MONSTERS",
+        "item": "☃️",
+        "rarity": "Chroma",
+        "pi": 24,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_24_4",
+        "pack": "ICE MONSTERS",
+        "item": "💎",
+        "rarity": "Mythic",
+        "pi": 24,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_25_0",
+        "pack": "CHESS",
+        "item": "♟️",
+        "rarity": "Common",
+        "pi": 25,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_25_1",
+        "pack": "CHESS",
+        "item": "♜",
+        "rarity": "Rare",
+        "pi": 25,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_25_2",
+        "pack": "CHESS",
+        "item": "♞",
+        "rarity": "Epic",
+        "pi": 25,
+        "ri": 2
+      },
+      {
+        "id": "blook_admin_25_3",
+        "pack": "CHESS",
+        "item": "♝",
+        "rarity": "Chroma",
+        "pi": 25,
+        "ri": 3
+      },
+      {
+        "id": "blook_admin_25_4",
+        "pack": "CHESS",
+        "item": "♛",
+        "rarity": "Mythic",
+        "pi": 25,
+        "ri": 4
+      },
+      {
+        "id": "blook_admin_26_0",
+        "pack": "VERITY",
+        "item": "Verity",
+        "rarity": "Intrustdent",
+        "pi": 26,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_27_0",
+        "pack": "FESTIVAL EXOTIC",
+        "item": "Festival Untrusted",
+        "rarity": "Untrusted",
+        "pi": 27,
+        "ri": 0
+      },
+      {
+        "id": "blook_admin_27_1",
+        "pack": "FESTIVAL EXOTIC",
+        "item": "Festival Angelic",
+        "rarity": "Mythical",
+        "pi": 27,
+        "ri": 1
+      },
+      {
+        "id": "blook_admin_27_2",
+        "pack": "FESTIVAL EXOTIC",
+        "item": "Festival Chroma",
+        "rarity": "Chroma",
+        "pi": 27,
+        "ri": 2
+      }
+    ],
+    "avatar": null,
+    "admin": true,
+    "banned": false,
+    "muted": false,
+    "dailyReward": {
+      "lastClaim": null,
+      "streak": 0
+    },
+    "updatedAt": 1787203635372
+  }
+}

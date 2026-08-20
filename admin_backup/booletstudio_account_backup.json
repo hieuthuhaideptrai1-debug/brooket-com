@@ -1,0 +1,22 @@
+{
+  "username": "Blooketstudio",
+  "password": "Growgarden1@",
+  "admin": true,
+  "coin": 1000,
+  "token": 0,
+  "blooks": "ALL_BLOOKS_ONE_EACH",
+  "avatar": "",
+  "muted": false,
+  "banned": false,
+  "backup_note": "Full backup of the blooketstudio admin account configuration.",
+  "blook_inventory_policy": "Exactly one copy of every Blook in the project's catalog.",
+  "blook_count": 134,
+  "language": "English",
+  "visual_assets": "Local SVG assets; no external image URLs.",
+  "currency_system": {
+    "main": "Tokens",
+    "secondary": "ESP"
+  },
+  "image_system": "Local polished SVG Blook images",
+  "catalog_source": "admin-catalog.json"
+}

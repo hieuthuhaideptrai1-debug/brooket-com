@@ -1,0 +1,7 @@
+{
+  "name": "blooketstudio-realtime",
+  "version": "2.1.0",
+  "private": true,
+  "scripts": {"start":"node server.js"},
+  "dependencies": {"ws":"^8.18.0"}
+}

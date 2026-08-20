@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Brooket</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="logo">BROOK<span>ET</span></div>
+    <h1 id="authTitle">Log In</h1>
+    <p id="authSub">Log in to start playing</p>
+    <input id="authUser" placeholder="Username" maxlength="20">
+    <input id="authPass" type="password" placeholder="Password" maxlength="50">
+    <input id="authPass2" type="password" placeholder="Confirm password" maxlength="50" class="register-only hidden">
+    <button id="authBtn" class="primary" type="button">LOG IN</button>
+    <button id="switchAuth" class="link" type="button">Don't have an account? Sign Up</button>
+    <div id="authMsg" class="message"></div>
+  </div>
+</div>
+
+<div id="game" class="hidden">
+<header class="topbar">
+  <div class="brand">BROOK<span>ET</span></div>
+  <div class="topbar-spacer"></div>
+  <div class="coins">Tokens <b id="coins">0</b></div><div class="coins">ESP <b id="tokens">0</b></div>
+  <div class="player" id="playerName">Player</div>
+</header>
+
+<aside class="sidebar">
+  <div class="sidebar-title">MENU</div>
+  <nav id="nav" class="sidebar-nav">
+    <button class="nav active" data-page="stats">📊 Stats</button>
+    <button class="nav" data-page="market">🛒 Market</button>
+    <button class="nav" data-page="blooks">🧩 Blooks</button>
+    <button id="bazaarNav" class="nav" data-page="bazaar">🏪 Bazaar</button>
+    <button class="nav" data-page="leaderboard">🏆 Leaderboard</button>
+    <button class="nav" data-page="trade">🔄 Trade</button>
+    <button class="nav" data-page="chat">💬 Chat</button>
+    <button class="nav" data-page="settings">⚙️ Settings</button>
+    <button id="adminNav" class="nav hidden" data-page="admin">🛡️ Admin</button>
+  </nav>
+</aside>
+
+<main>
+<section id="marketPage" class="page active">
+  <div class="market-shell">
+    <div class="market-left">
+      <div class="market-title"><div><div class="crumb">Market <span>›</span> Packs</div><p>Open Packs and collect Blooks.</p></div><div class="market-actions"><span>Opened <b id="opened">0</b></span><span>Inventory <b id="inventoryCount">0</b></span><button id="sellBtn" class="small">💰 Sell All Dupes</button><button id="sellAllBtn" class="small danger">💰 Sell All Blooks</button></div></div>
+      <div id="packs" class="pack-grid"></div>
+    </div>
+  </div>
+</section>
+
+<section id="statsPage" class="page"><div class="panel"><div class="stats-head"><div><h1>📊 Stats</h1><p class="muted">View your stats or claim your daily reward.</p></div><div class="stats-actions"><button id="dailyRewardsBtn" class="small daily-reward-btn">🎁 Daily Rewards</button><button id="viewStatsBtn" class="small">👤 View Stats</button></div></div><div id="statsContent" class="cards"></div></div></section>
+<section id="blooksPage" class="page"><div class="panel"><h1>🧩 Blooks</h1>
+<p class="muted">Click "Set as avatar" to show everyone which Blook you are using.</p>
+<div id="avatarStatus" class="avatar-status"></div>
+<div id="blooksContent" class="blooks"></div></div></section>
+<section id="bazaarPage" class="page">
+  <div class="panel bazaar-panel">
+    <div class="bazaar-head"><div><h1>🏪 Bazaar</h1><p class="muted">Player marketplace — only Blooks listed by players can be bought.</p></div><div class="bazaar-balance">🪙 <b id="bazaarCoins">0</b> Tokens</div></div>
+    <div class="bazaar-tabs"><button class="small bazaar-tab active" data-bazaar-tab="buy">🛒 Buy</button><button class="small bazaar-tab" data-bazaar-tab="sell">💰 Sell</button></div>
+    <div id="bazaarBuy" class="bazaar-section"><h2>👥 Player Listings</h2><div id="bazaarListings" class="bazaar-grid"></div></div>
+    <div id="bazaarSell" class="bazaar-section hidden"><h2>📦 List Your Blooks</h2><p class="muted">List one Blook for other players to buy. Your equipped avatar cannot be listed.</p><div id="bazaarInventory" class="bazaar-grid"></div></div>
+  </div>
+</section>
+
+<section id="leaderboardPage" class="page"><div class="panel"><h1>🏆 Leaderboard</h1><div id="leaderboardContent"></div></div></section>
+<section id="tradePage" class="page"><div class="panel"><h1>🔄 Trade</h1>
+<p class="muted">Choose a player and two Blooks. The recipient will see the trade request with Accept or Decline.</p>
+<div class="trade-create"><select id="tradeTarget"></select><select id="tradeGive"></select><select id="tradeWant"></select><button id="sendTradeBtn" class="primary">📨 Send Trade</button></div>
+<h3>📥 Incoming Trades</h3><div id="incomingTrades"></div>
+<h3>📤 Your Trades</h3><div id="outgoingTrades"></div>
+</div></section>
+
+<section id="chatPage" class="page">
+  <div class="panel chat">
+    <h1>💬 Chat</h1><p class="muted">Real-time chat — online players can see each other and their messages.</p>
+    <div id="onlinePlayers" class="online"></div>
+    <div id="chatMessages" class="messages"></div>
+    <div class="chat-row"><input id="chatInput" maxlength="160" placeholder="Enter a message..."><button id="sendChat" class="small">Send</button></div>
+  </div>
+</section>
+
+<section id="adminPage" class="page">
+<div class="panel">
+<h1>🛡️ Admin Panel</h1>
+<p class="muted">Only admin accounts can see this area.</p>
+<div class="admin-grid">
+<div class="admin-card"><h3>💰 Edit Balance</h3><select id="adminPlayer"></select><input id="adminCoins" type="number" min="0" placeholder="New Token amount"><label class="inf-toggle"><input id="adminCoinsInf" type="checkbox"> ∞ Infinite Tokens</label><input id="adminTokens" type="number" min="0" placeholder="New ESP amount"><label class="inf-toggle"><input id="adminTokensInf" type="checkbox"> ∞ Infinite ESP</label><button id="adminApplyBalance" class="small">Apply</button></div>
+<div class="admin-card"><h3>🔨 Ban / Mute</h3><select id="adminPlayerMod"></select><button id="adminBan" class="danger">Ban / Unban</button><button id="adminMute" class="small">Mute / Unmute</button><div id="adminModStatus" class="muted"></div></div>
+<div class="admin-card">
+<h3>🎁 Give Blook</h3>
+<p class="muted">Choose a player, Pack, and Blook to add directly to their inventory.</p>
+<select id="adminGivePlayer"></select>
+<select id="adminGivePack"></select>
+<select id="adminGiveBlook"></select>
+<input id="adminGiveQty" type="number" min="1" max="10000" value="1" placeholder="Quantity">
+<button id="adminGiveApply" class="small">🎁 Give Blook</button>
+<div id="adminGiveStatus" class="muted"></div>
+</div>
+<div class="admin-card">
+<h3>🎯 Force Blook 100%</h3>
+<p class="muted">Choose a player + Blook. Their next Pack opening will guarantee this Blook at 100%.</p>
+<select id="adminForcePlayer"></select>
+<select id="adminForceBlook"></select>
+<button id="adminForceApply" class="small">🎯 Set 100%</button>
+<button id="adminForceClear" class="danger">✕ Clear</button>
+<div id="adminForceStatus" class="muted"></div>
+</div>
+<div class="admin-card"><h3>🗑️ Delete Account</h3><select id="adminPlayerDelete"></select><p class="muted">Permanently delete the player's account and Blook data.</p><button id="adminDelete" class="danger">🗑️ DELETE ACCOUNT</button></div>
+<div class="admin-card"><h3>👥 Players</h3><div id="adminPlayers"></div></div>
+</div>
+</div>
+</section><section id="settingsPage" class="page">
+  <div class="panel settings">
+    <h1>⚙️ Settings</h1>
+    <div class="setting"><div><b>Username</b><small>Change your display name.</small></div><button id="renameBtn" class="small">Change Name</button></div>
+    <div class="setting"><div><b>Password</b><small>Change your account password.</small></div><button id="passwordBtn" class="small">Reset Password</button></div>
+    <div class="setting"><div><b>Log Out</b><small>Log Out.</small></div><button id="logoutBtn" class="small">Log Out</button></div>
+    <div class="setting"><div><b>Reset Account</b><small>Delete this account from this browser.</small></div><button id="resetBtn" class="danger">Reset</button></div>
+  </div>
+</section>
+</main>
+</div>
+
+<div id="announcement" class="announcement"></div>
+<div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="close">×</button><h2 id="modalTitle">Pack</h2><div id="result" class="result"></div><button id="openAgain" class="primary">OPEN AGAIN</button></div></div>
+<div id="dailyRewardsModal" class="modal hidden"><div class="modal-card daily-rewards-card"><button id="closeDailyRewards" class="close" aria-label="Close">×</button><h2>🎁 Daily Rewards</h2><p id="dailyRewardStatus" class="muted"></p><div id="dailyRewardStreak" class="daily-streak"></div><div id="dailyRewardsList" class="daily-rewards-list"></div><button id="claimDailyRewardBtn" class="primary daily-claim-btn">🎁 Claim Today's Reward</button></div></div>
+<div id="rarityInfoModal" class="modal hidden"><div class="modal-card rarity-info-card"><button id="closeRarityInfo" class="close" aria-label="Close">×</button><h2>❓ Blook Rarity & Drop Rates</h2><p class="muted">Lower drop rate = rarer Blook. Untrusted is rarer than Mythical, and Mythical is rarer than Chroma.</p><div class="drop-rate-list"><div class="drop-rate-row"><div class="drop-rate-rarity rarity-common">Common</div><b>~60%</b></div><div class="drop-rate-row"><div class="drop-rate-rarity rarity-rare">Rare</div><b>~25%</b></div><div class="drop-rate-row"><div class="drop-rate-rarity rarity-epic">Epic</div><b>~14.6%</b></div><div class="drop-rate-row"><div class="drop-rate-rarity rarity-chroma">Chroma</div><b>0.4%</b></div><div class="drop-rate-row"><div class="drop-rate-rarity rarity-mythic">Mythic</div><b>0.05%</b></div><div class="drop-rate-row"><div class="drop-rate-rarity rarity-untrusted">Untrusted</div><b>0.01%</b></div></div><div class="rarity-order-note">🌈 Untrusted &gt; ⭐ Mythical &gt; 💜 Chroma in rarity</div></div></div>
+<div id="statsViewModal" class="modal hidden"><div class="modal-card stats-view-card"><button id="closeStatsView" class="close" aria-label="Close">×</button><h2>👤 View Stats</h2><p class="muted">Whose stats do you want to view?</p><input id="statsPlayerInput" class="stats-player-input" maxlength="32" placeholder="Enter player username..." autocomplete="off"><button id="showStatsBtn" class="primary stats-show-btn">VIEW STATS</button><div id="statsViewResult" class="stats-view-result"></div></div></div>
+<div id="packInfoModal" class="modal hidden"><div class="modal-card pack-info-card"><button id="closePackInfo" class="close" aria-label="Close">×</button><h2 id="packInfoTitle">PACK</h2><div id="packInfoBody" class="pack-info-body"></div><button id="closePackInfoBottom" class="primary" type="button">CLOSE</button></div></div>
+<script src="script.js"></script>
+</body>
+</html>

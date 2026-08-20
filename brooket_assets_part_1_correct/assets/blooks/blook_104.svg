@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+<defs><filter id="s"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-opacity=".25"/></filter></defs>
+<rect x="18" y="18" width="184" height="184" rx="42" fill="#ffffff" filter="url(#s)"/>
+<text x="110" y="140" text-anchor="middle" font-size="96" font-family="Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Noto Emoji, sans-serif">✨</text>
+</svg>

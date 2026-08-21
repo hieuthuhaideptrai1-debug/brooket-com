@@ -333,31 +333,59 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- await serverUsersReady;
- const u=$("authUser").value.trim(),p=$("authPass").value;
- if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
- if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
- if(window.__registerMode){
-  if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
-  if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
-  if(users[u])return $("authMsg").textContent="That username already exists.";
-  users[u]=makeAccount(u,p);saveUsers();enter(u);
- }else{
-  const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
-  const loginKey = key || u;
-  const saved = users[loginKey];
-  if(!saved) return $("authMsg").textContent="Incorrect username or password.";
-  if(String(loginKey).toLowerCase()==="blooketstudio"){
-    if(p!=="Growgarden1@") return $("authMsg").textContent="Incorrect username or password.";
-    saved.password="Growgarden1@";
-    saved.admin=true;
-    users[loginKey]=saved;
-    saveUsers();
-  }else if(saved.password!==p){
-    return $("authMsg").textContent="Incorrect username or password.";
+ try{
+  if(serverUsersReady){
+   await Promise.race([
+    Promise.resolve(serverUsersReady),
+    new Promise(resolve=>setTimeout(resolve,5000))
+   ]);
   }
-  enter(loginKey);
+ }catch(e){
+  console.warn("Shared users unavailable; using local account data.",e);
  }
+
+ const uEl=$("authUser"), pEl=$("authPass"), p2El=$("authPass2"), msg=$("authMsg");
+ if(!uEl||!pEl||!msg)return;
+ const u=uEl.value.trim(),p=pEl.value;
+
+ if(!u||!p){msg.textContent="Please fill in all fields.";return;}
+ if(!/^[A-Za-z0-9_]{3,20}$/.test(u)){
+  msg.textContent="Username must be 3–20 characters.";return;
+ }
+
+ if(window.__registerMode){
+  if(p.length<4){msg.textContent="Password must be at least 4 characters.";return;}
+  if(p2El && p2El.value!==p){msg.textContent="Passwords do not match.";return;}
+  if(users[u]){
+   msg.textContent="That username already exists.";return;
+  }
+  users[u]=makeAccount(u,p);
+  saveUsers();
+  enter(u);
+  return;
+ }
+
+ const key=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
+ const loginKey=key||u;
+ const saved=users[loginKey];
+
+ if(!saved){
+  msg.textContent="Incorrect username or password.";return;
+ }
+
+ if(String(loginKey).toLowerCase()==="blooketstudio"){
+  if(p!=="Growgarden1@"){
+   msg.textContent="Incorrect username or password.";return;
+  }
+  saved.password="Growgarden1@";
+  saved.admin=true;
+  users[loginKey]=saved;
+  saveUsers();
+ }else if(String(saved.password)!==p){
+  msg.textContent="Incorrect username or password.";return;
+ }
+
+ enter(loginKey);
 }
 function festivalRarityForItem(item){
  const map={"Festival Untrusted":"Untrusted","Festival Angelic":"Mythical","Festival Chroma":"Chroma"};
@@ -1333,38 +1361,43 @@ document.addEventListener('click',e=>{
 }); // bazaar-own-card-recall
 
 
-/* Brooket landing Login / Sign Up wiring */
+
+
+/* Brooket Landing Login / Sign Up — final safe wiring */
 (function(){
-  function wireBrooketAuth(){
-    const loginBtn=document.getElementById("landingLogin");
-    const signupBtn=document.getElementById("landingRegister");
-    if(loginBtn){
-      loginBtn.type="button";
-      loginBtn.onclick=function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        const el=document.getElementById("authScreen");
-        if(el) el.classList.remove("hidden");
-        if(typeof setAuthMode==="function") setAuthMode(false);
-        const u=document.getElementById("authUser");
-        if(u) u.focus();
-      };
-    }
-    if(signupBtn){
-      signupBtn.type="button";
-      signupBtn.onclick=function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        const el=document.getElementById("authScreen");
-        if(el) el.classList.remove("hidden");
-        if(typeof setAuthMode==="function") setAuthMode(true);
-        const u=document.getElementById("authUser");
-        if(u) u.focus();
-      };
-    }
+ function openAuth(register){
+  try{
+   var screen=document.getElementById("authScreen");
+   if(screen){
+    screen.classList.remove("hidden");
+    screen.style.display="";
+   }
+   if(typeof setAuthMode==="function") setAuthMode(!!register);
+   var input=document.getElementById("authUser");
+   if(input) setTimeout(function(){input.focus();},20);
+  }catch(err){console.error("Landing auth error:",err);}
+ }
+ function bind(){
+  var login=document.getElementById("landingLogin");
+  var signup=document.getElementById("landingRegister");
+  if(login && !login.dataset.brooketAuth){
+   login.dataset.brooketAuth="1";
+   login.type="button";
+   login.addEventListener("click",function(e){
+    e.preventDefault();e.stopImmediatePropagation();openAuth(false);
+   },true);
   }
-  if(document.readyState==="loading")
-    document.addEventListener("DOMContentLoaded",wireBrooketAuth,{once:true});
-  else wireBrooketAuth();
-  window.addEventListener("load",wireBrooketAuth,{once:true});
+  if(signup && !signup.dataset.brooketAuth){
+   signup.dataset.brooketAuth="1";
+   signup.type="button";
+   signup.addEventListener("click",function(e){
+    e.preventDefault();e.stopImmediatePropagation();openAuth(true);
+   },true);
+  }
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});
+ else bind();
+ window.addEventListener("load",bind);
+ setTimeout(bind,300);
+ setTimeout(bind,1000);
 })();

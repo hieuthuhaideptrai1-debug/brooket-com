@@ -6,6 +6,9 @@ async function renderSharedLeaderboard(){
   if(!el)return;
   let board=[];
   try{
+    // Flush this browser's genuine local changes to the root first, then
+    // read the canonical leaderboard. This makes the leaderboard converge
+    // immediately instead of waiting for the 3-second background timer.
     if(serverAvailable) await pushServerUsers();
     const r=await fetch(`${accountApiBase}/api/leaderboard`,{cache:"no-store"});
     if(!r.ok)throw new Error("leaderboard request failed");
@@ -13,10 +16,11 @@ async function renderSharedLeaderboard(){
     board=Array.isArray(d.leaderboard)?d.leaderboard:[];
   }catch{
     board=Object.entries(users||{}).map(([username,u])=>({
-      username, coins:Number(u.coins||0), opened:Number(u.opened||0)
-    })).sort((a,b)=>b.coins-a.coins||a.username.localeCompare(b.username));
+      username, opened:Number(u.opened||0), coins:Number(u.coins||0),
+      xp:Number(u.xp||0), score:Number(u.score||u.xp||u.opened||0)
+    })).sort((a,b)=>b.score-a.score||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
   }
-  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>🪙 ${Number(x.coins||0).toLocaleString()} Tokens</b></div>`).join("");
+  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>${Number(x.opened||0)} packs</b></div>`).join("");
 }
 
 
@@ -163,6 +167,7 @@ async function loadServerUsers(){
     if(adminKey){
       const admin=users[adminKey];
       admin.admin=true;
+      admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
       admin.coins=Number(admin.coins ?? 865);
@@ -291,7 +296,7 @@ function saveUsers(){
   if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
 }
 function save(){ if(account?.inventory) account.inventory=account.inventory.map(normalizeBlookRarity); users[current]=account;saveUsers()}
-function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
+function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
 const BLOOK_IMAGE_MAP=new Map(sets.flatMap(r=>r).map((item,i)=>[item,"assets/blooks/blook_"+i+".svg"]));
 /* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */
 const CUSTOM_BLOOK_IMAGES={"Festival Chroma":"assets/blooks/festival-chroma.png","Festival Angelic":"assets/blooks/festival-mythical.png","Festival Untrusted":"assets/blooks/festival-untrusted.png"};
@@ -368,7 +373,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; account.banned ??= false; account.muted ??= false;
+ account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -386,28 +391,29 @@ function enter(u){
 }
 setAuthMode(false);
 
-// Wire authentication controls to the existing auth() function.
-if ($("authBtn")) $("authBtn").addEventListener("click", auth);
-if ($("switchAuth")) $("switchAuth").addEventListener("click", () => setAuthMode(!window.__registerMode));
+// Fix Login / Sign Up button handlers for the online deployment.
+if ($("authBtn")) $("authBtn").onclick = auth;
+if ($("switchAuth")) $("switchAuth").onclick = () => setAuthMode(!window.__registerMode);
+
 if ($("authPass")) $("authPass").addEventListener("keydown", e => {
   if (e.key === "Enter") auth();
 });
+
 if ($("authPass2")) $("authPass2").addEventListener("keydown", e => {
   if (e.key === "Enter") auth();
 });
-
 
 function update(){
  $("coins").textContent=account.coins.toLocaleString();
  $("tokens").textContent=(account.tokens||0).toLocaleString();
  $("opened").textContent=account.opened;
- $("adminNav").classList.toggle("hidden",!account.admin);
+ $("adminNav").classList.toggle("hidden",!isStaffAccount());
  $("inventoryCount").textContent=account.inventory.length;
  $("playerName").innerHTML=`${getAvatarVisual(current)} <span>${escapeHtml(account.displayName)}</span>`;
 }
 
 function renderPacks(){
- const visiblePacks=packs.map((p,i)=>({p,i})).filter(({p})=>!p[4] || account?.admin);
+ const visiblePacks=packs.map((p,i)=>({p,i})).filter(({p})=>!p[4] || isAdminAccount());
  $("packs").innerHTML=visiblePacks.map(({p,i})=>`
  <div class="pack ${(p[0]==="VERITY"||p[0]==="FESTIVAL EXOTIC")?'admin-pack':''} ${selected?.i===i?'selected':''}" style="--pack-accent:${p[2]}" onclick="buy(${i})">
    ${(p[0]==="VERITY"||p[0]==="FESTIVAL EXOTIC")?'<div class="admin-crown">👑</div>':''}
@@ -576,13 +582,22 @@ function renderBotLog(){
 }
 
 
-function requireAdmin(){if(!account||!account.admin){alert("You do not have admin permission.");return false}return true}
+function isAdminAccount(a=account){ return !!a && (a.admin===true || String(a.role||"").toLowerCase()==="admin"); }
+function isPartnerAccount(a=account){ return !!a && String(a.role||"").toLowerCase()==="partner" && !isAdminAccount(a); }
+function isStaffAccount(a=account){ return isAdminAccount(a) || isPartnerAccount(a); }
+function normalizeRole(a){ if(!a) return a; if(a.admin===true) a.role="admin"; else if(!["user","partner","admin"].includes(String(a.role||"").toLowerCase())) a.role="user"; return a; }
+function requireAdmin(){if(!isAdminAccount()){alert("You do not have admin permission.");return false}return true}
+function requireStaff(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
 function refreshAdmin(){
- if(!account?.admin)return;
+ if(!isStaffAccount())return;
+ const fullAdmin=isAdminAccount();
+ document.querySelectorAll(".admin-full-only").forEach(el=>el.classList.toggle("hidden",!fullAdmin));
+ const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/ESP.";
  const names=Object.keys(users);
  const opts=names.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
  $("adminPlayer").innerHTML=opts;
  $("adminPlayerMod").innerHTML=opts;
+ if($("adminRolePlayer")) $("adminRolePlayer").innerHTML=opts;
  $("adminPlayerDelete").innerHTML=opts;
  $("adminGivePlayer").innerHTML=opts;
  $("adminForcePlayer").innerHTML=opts;
@@ -644,7 +659,7 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
 if($("adminCoinsInf")) $("adminCoinsInf").onchange=()=>{ const inf=$("adminCoinsInf").checked; $("adminCoins").disabled=inf; if(inf) $("adminCoins").value=""; };
 if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTokensInf").checked; $("adminTokens").disabled=inf; if(inf) $("adminTokens").value=""; };
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
- if(!requireAdmin())return;
+ if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
  const infiniteCoins=!!$("adminCoinsInf")?.checked;
  const infiniteTokens=!!$("adminTokensInf")?.checked;
@@ -670,13 +685,15 @@ if($("adminBan")) $("adminBan").onclick=()=>{
  }
 };
 if($("adminMute")) $("adminMute").onclick=()=>{
- if(!requireAdmin())return;
+ if(!requireStaff())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
  users[u].muted=!users[u].muted;
  saveUsers();refreshAdmin();
 };
 
+if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
+if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
  if(!requireAdmin())return;
@@ -832,7 +849,7 @@ function renderAll(){
    list.push(x);
    ownedByCatalog.set(key,list);
  });
- $("blooksContent").innerHTML = packs.filter(p=>!p[4] || account.admin).map((p)=>{
+ $("blooksContent").innerHTML = packs.filter(p=>!p[4] || isAdminAccount()).map((p)=>{
    const pi=packs.indexOf(p);
    const row = sets[pi] || [];
    const ownedInPack = account.inventory.filter(x=>x.pack===p[0]).length;
@@ -1003,7 +1020,7 @@ function renderViewedStats(name){
 }
 
 document.querySelectorAll(".nav").forEach(btn=>btn.onclick=()=>{
- if(btn.dataset.page==="admin"&&!account.admin)return alert("You do not have admin permission.");
+ if(btn.dataset.page==="admin"&&!isStaffAccount())return alert("You do not have Admin/Partner permission.");
  document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  $(btn.dataset.page+"Page").classList.add("active");renderAll();
@@ -1307,19 +1324,108 @@ document.addEventListener('click',e=>{
 }); // bazaar-own-card-recall
 
 
-// Landing screen navigation
-(function(){
-  const landing=document.getElementById('landingScreen');
-  const auth=document.getElementById('authScreen');
-  const login=document.getElementById('landingLogin');
-  const register=document.getElementById('landingRegister');
-  function openAuth(registerMode){
-    landing?.classList.add('hidden');
-    auth?.classList.remove('hidden');
-    if(registerMode){
-      try{document.getElementById('switchAuth')?.click();}catch{}
-    }
+/* Brooket Credits — live Admin/Partner directory */
+(function initBrooketCredits(){
+  function esc(v){
+    return String(v ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
   }
-  login?.addEventListener('click',()=>openAuth(false));
-  register?.addEventListener('click',()=>openAuth(true));
+
+  function roleOf(a){
+    if(!a) return "user";
+    if(a.admin === true || String(a.role||"").toLowerCase() === "admin") return "admin";
+    if(String(a.role||"").toLowerCase() === "partner") return "partner";
+    return "user";
+  }
+
+  function renderCredits(){
+    const old = document.getElementById("brooketCreditsModal");
+    if(old) old.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "brooketCreditsModal";
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:99999;display:flex;align-items:center;
+      justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);
+      padding:20px;box-sizing:border-box;
+    `;
+
+    const box = document.createElement("div");
+    box.style.cssText = `
+      width:min(620px,94vw);max-height:82vh;overflow:auto;border-radius:20px;
+      padding:24px;background:#171717;border:1px solid rgba(255,255,255,.22);
+      box-shadow:0 0 45px rgba(140,90,255,.35);color:#fff;font-family:Arial,sans-serif;
+    `;
+
+    const all = (typeof users === "object" && users) ? users : {};
+    const admins = Object.entries(all).filter(([,a]) => roleOf(a)==="admin");
+    const partners = Object.entries(all).filter(([,a]) => roleOf(a)==="partner");
+
+    const people = [
+      ...admins.map(([u,a]) => ({u,a,role:"Admin"})),
+      ...partners.map(([u,a]) => ({u,a,role:"Partner"}))
+    ];
+
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <h2 style="margin:0;font-size:28px;background:linear-gradient(90deg,#ff3b3b,#ffd43b,#35e27d,#35b8ff,#a855f7,#ff3b8d);background-size:300% 100%;animation:brooketCreditsRainbow 3s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent">
+          Brooket Credits
+        </h2>
+        <button id="brooketCreditsClose" style="border:0;border-radius:10px;padding:8px 13px;cursor:pointer;font-weight:700">✕</button>
+      </div>
+      <p style="margin:8px 0 18px;color:#bbb">Admin and Partner accounts are updated automatically.</p>
+      <div id="brooketCreditsList">
+        ${people.length ? people.map(({u,a,role}) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.07)">
+            <div>
+              <div style="font-weight:800;font-size:17px">${esc(a.displayName || u)}</div>
+              <div style="font-size:12px;color:#aaa">@${esc(u)}</div>
+            </div>
+            <div style="font-weight:900;padding:6px 10px;border-radius:999px;background:linear-gradient(90deg,#ff3b3b,#ffd43b,#35e27d,#35b8ff,#a855f7,#ff3b8d);background-size:300% 100%;animation:brooketCreditsRainbow 3s linear infinite;color:#fff;text-shadow:0 1px 3px #000">
+              ${role}
+            </div>
+          </div>
+        `).join("") : `<div style="padding:18px;text-align:center;color:#aaa">No Admin or Partner accounts found.</div>`}
+      </div>
+    `;
+
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+
+    document.getElementById("brooketCreditsClose").onclick = () => modal.remove();
+    modal.addEventListener("click", e => { if(e.target === modal) modal.remove(); });
+  }
+
+  function installCreditsButton(){
+    if(!document.body || document.getElementById("brooketCreditsButton")) return;
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes brooketCreditsRainbow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+      #brooketCreditsButton{
+        position:fixed;right:18px;bottom:18px;z-index:99998;
+        border:0;border-radius:999px;padding:10px 17px;cursor:pointer;
+        font-weight:900;color:#fff;background:linear-gradient(90deg,#ff3b3b,#ffd43b,#35e27d,#35b8ff,#a855f7,#ff3b8d);
+        background-size:300% 100%;animation:brooketCreditsRainbow 3s linear infinite;
+        box-shadow:0 6px 24px rgba(0,0,0,.35);
+      }
+    `;
+    document.head.appendChild(style);
+
+    const btn = document.createElement("button");
+    btn.id = "brooketCreditsButton";
+    btn.type = "button";
+    btn.textContent = "Credits";
+    btn.onclick = renderCredits;
+    document.body.appendChild(btn);
+  }
+
+  function boot(){
+    installCreditsButton();
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+
+  window.brooketRefreshCredits = renderCredits;
 })();

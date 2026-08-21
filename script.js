@@ -170,6 +170,7 @@ async function loadServerUsers(){
       admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
+      admin.banned=false; admin.muted=false;
       admin.coins=Number(admin.coins ?? 865);
       admin.tokens=Number(admin.tokens ?? 100);
       admin.opened=Number(admin.opened ?? 0);
@@ -296,7 +297,7 @@ function saveUsers(){
   if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
 }
 function save(){ if(account?.inventory) account.inventory=account.inventory.map(normalizeBlookRarity); users[current]=account;saveUsers()}
-function makeAccount(u,p){return{password:p,displayName:u,coins:0,tokens:0,xp:0,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
+function makeAccount(u,p){return{password:p,displayName:u,coins:0,tokens:0,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
 const BLOOK_IMAGE_MAP=new Map(sets.flatMap(r=>r).map((item,i)=>[item,"assets/blooks/blook_"+i+".svg"]));
 /* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */
 const CUSTOM_BLOOK_IMAGES={"Festival Chroma":"assets/blooks/festival-chroma.png","Festival Angelic":"assets/blooks/festival-mythical.png","Festival Untrusted":"assets/blooks/festival-untrusted.png"};
@@ -333,7 +334,7 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- await serverUsersReady;
+ try{ await Promise.race([serverUsersReady || Promise.resolve(), new Promise(r=>setTimeout(r,1500))]); }catch(e){}
  const u=$("authUser").value.trim(),p=$("authPass").value;
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
@@ -373,7 +374,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
+ account.coins ??= 0; account.tokens ??= 0; account.avatar ??= null; account.admin ??= false; normalizeRole(account); if(String(account.role||"").toLowerCase()==="admin") account.admin=true; if(String(account.role||"").toLowerCase()==="partner") account.admin=false; account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -576,15 +577,11 @@ function isStaffAccount(a=account){ return isAdminAccount(a) || isPartnerAccount
 function normalizeRole(a){ if(!a) return a; if(a.admin===true) a.role="admin"; else if(!["user","partner","admin"].includes(String(a.role||"").toLowerCase())) a.role="user"; return a; }
 function requireAdmin(){if(!isAdminAccount()){alert("You do not have admin permission.");return false}return true}
 function requireStaff(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
-function requirePartnerOrAdminBalance(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
 function refreshAdmin(){
  if(!isStaffAccount())return;
  const fullAdmin=isAdminAccount();
  document.querySelectorAll(".admin-full-only").forEach(el=>el.classList.toggle("hidden",!fullAdmin));
- const partnerOnlyIds=["adminPlayer","adminPlayerMod","adminMute","adminCoins","adminApplyBalance","adminCoinsInf"];
- const forbiddenPartnerIds=["adminGivePlayer","adminGivePack","adminGiveBlook","adminGiveQty","adminGiveApply","adminForcePlayer","adminForceBlook","adminForceApply","adminForceClear","adminBan","adminRolePlayer","adminRoleSelect","adminRoleApply","adminPlayerDelete","adminDelete"];
- if(!fullAdmin){for(const id of forbiddenPartnerIds){const el=$(id);if(el)el.classList.add("hidden");} for(const id of ["adminTokens","adminTokensInf"]){const el=$(id);if(el)el.classList.add("hidden");}} else {for(const id of forbiddenPartnerIds){const el=$(id);if(el)el.classList.remove("hidden");} for(const id of ["adminTokens","adminTokensInf"]){const el=$(id);if(el)el.classList.remove("hidden");}}
- const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: Mute/Unmute and Edit Token balance up to 10,000.";
+ const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/ESP.";
  const names=Object.keys(users);
  const opts=names.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
  $("adminPlayer").innerHTML=opts;
@@ -651,33 +648,38 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
 if($("adminCoinsInf")) $("adminCoinsInf").onchange=()=>{ const inf=$("adminCoinsInf").checked; $("adminCoins").disabled=inf; if(inf) $("adminCoins").value=""; };
 if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTokensInf").checked; $("adminTokens").disabled=inf; if(inf) $("adminTokens").value=""; };
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
- if(!requireStaff())return;
+ const staff=account;
+ if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return;}
  const u=selectedAdminUser(),a=users[u];
  if(!u||!a)return alert("Select an account.");
- const c=Number($("adminCoins").value);
- if(!Number.isFinite(c)||c<0)return alert("Enter a valid Token amount.");
- if(isPartnerAccount()){
-   if(c>10000)return alert("Partner balance limit is 10,000 Tokens.");
+ const infiniteCoins=!!$("adminCoinsInf")?.checked;
+ const infiniteTokens=!!$("adminTokensInf")?.checked;
+ const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
+ if(isPartnerAccount(staff)){
+   if(infiniteCoins||infiniteTokens)return alert("Partner can only edit Balance up to 10,000.");
+   if(!Number.isFinite(c)||c<0||c>10000)return alert("Partner Balance must be between 0 and 10,000.");
    a.coins=Math.floor(c);
  }else{
-   const infiniteCoins=!!$("adminCoinsInf")?.checked;
+   if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Balance amount or enable ∞.");
+   if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞.");
    a.coins=infiniteCoins?Infinity:Math.floor(c);
-   if($("adminTokensInf")?.checked){a.tokens=Infinity;}else{const t=Number($("adminTokens").value); if(!Number.isFinite(t)||t<0)return alert("Enter a valid ESP amount."); a.tokens=Math.floor(t);}
+   a.tokens=infiniteTokens?Infinity:Math.floor(t);
  }
- saveUsers(); if(u===current)account=a; renderAll();refreshAdmin();alert("Updated "+u);
+ a.updatedAt=Date.now(); users[u]=a; saveUsers();
+ if(u===current){account=a;renderAll();}
+ refreshAdmin();
+ alert("Updated "+u);
 };
 if($("adminBan")) $("adminBan").onclick=()=>{
  if(!requireAdmin())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
- if(String(u).toLowerCase()==="blooketstudio" && !users[u].banned)return alert("The main Blooketstudio account cannot be banned.");
+ if(String(u).toLowerCase()==="blooketstudio")return alert("The main Blooketstudio account cannot be banned.");
  const willBan=!users[u].banned;
- const action=willBan?"ban":"unban";
- if(!confirm(`Are you sure you want to ${action} @${u}?`))return;
- users[u].banned=willBan;
- users[u].updatedAt=Date.now();
- saveUsers(); refreshAdmin();
- if(u===current && willBan){localStorage.removeItem("pm_current"); alert("Account @"+u+" has been banned. You will be logged out."); location.reload();}
+ if(willBan && !confirm("Are you sure you want to ban @"+u+"?"))return;
+ if(!willBan && !confirm("Are you sure you want to unban @"+u+"?"))return;
+ users[u].banned=willBan; users[u].updatedAt=Date.now(); saveUsers(); refreshAdmin();
+ if(u===current && willBan){localStorage.removeItem("pm_current");alert("Account @"+u+" has been banned. You will be logged out.");location.reload();}
 };
 if($("adminMute")) $("adminMute").onclick=()=>{
  if(!requireStaff())return;
@@ -689,20 +691,14 @@ if($("adminMute")) $("adminMute").onclick=()=>{
 
 if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
 if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{
-  if(!requireAdmin())return;
-  const u=$("adminRolePlayer").value, role=String($("adminRoleSelect").value||"user").toLowerCase();
-  if(!u||!users[u])return alert("Select an account.");
-  if(!["admin","partner","user"].includes(role))return alert("Invalid role.");
-  if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin.");
-  const a=users[u];
-  a.role=role;
-  a.admin=(role==="admin");
-  a.partner=(role==="partner");
-  a.updatedAt=Date.now();
-  saveUsers();
-  refreshAdmin();
-  if(u===current){ account=a; update(); }
-  alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`);
+ if(!requireAdmin())return;
+ const u=$("adminRolePlayer").value, role=String($("adminRoleSelect").value||"user").toLowerCase();
+ if(!u||!users[u])return alert("Select an account.");
+ if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin.");
+ const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); users[u]=a; saveUsers();
+ if(u===current){account=a;update();renderAll();}
+ refreshAdmin();
+ alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`);
 };
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
@@ -1142,7 +1138,6 @@ window.blooketstudioAdminBackup = {
 };
 
 /* Admin persistence is handled by ensureAdminAccount() above; no destructive reset is performed. */
-try{ if(users["blooketstudio"]){ users["blooketstudio"].admin=true; users["blooketstudio"].role="admin"; users["blooketstudio"].banned=false; users["blooketstudio"].muted=false; saveUsers(); } }catch{}
 
 // Bazaar: shared player-to-player marketplace. Admins can also buy/list, but nothing is purchasable unless a player has listed it.
 const BAZAAR_PRICES={Common:18,Rare:55,Epic:140,Chroma:850,Mythic:2500,Intrustdent:10000,Uncommon:30,Untrusted:100000,Mythical:10000};

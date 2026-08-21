@@ -273,7 +273,6 @@ function startAccountSync(){
         lastSyncedUsers=cloneUsers(users);
         if(current && users[current]) account=users[current];
         try{renderAll();}catch{}
-        try{refreshAdmin();}catch{}
         // Keep an already-open leaderboard live when another player joins
         // or changes their score.
         try{
@@ -300,7 +299,7 @@ function saveUsers(){
 function save(){ if(account?.inventory) account.inventory=account.inventory.map(normalizeBlookRarity); users[current]=account;saveUsers()}
 function makeAccount(u,p){return{password:p,displayName:u,coins:0,tokens:0,xp:0,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
 const BLOOK_IMAGE_MAP=new Map(sets.flatMap(r=>r).map((item,i)=>[item,"assets/blooks/blook_"+i+".svg"]));
-/* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */\n/* Mythical/Chroma/Untrusted visual rule: every catalog slot keeps its own blook_N asset; never reuse an emoji as the image source. */
+/* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */
 const CUSTOM_BLOOK_IMAGES={"Festival Chroma":"assets/blooks/festival-chroma.png","Festival Angelic":"assets/blooks/festival-mythical.png","Festival Untrusted":"assets/blooks/festival-untrusted.png"};
 function packIndexForName(packName){ return packs.findIndex(p=>p[0]===packName); }
 function blookImage(item,cls="blook-img",packIndex=null){
@@ -335,21 +334,23 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- // Do not block Login/Sign Up if the shared server is slow or temporarily unavailable.
- if (serverUsersReady) {
-   try { await Promise.race([serverUsersReady, new Promise(resolve => setTimeout(resolve, 3000))]); }
-   catch(e) { console.warn("Account sync unavailable; continuing with local cache.", e); }
- }
-
  const u=$("authUser").value.trim(),p=$("authPass").value;
+ // Do not block Login/Sign Up if the shared server is slow or unavailable.
+ try {
+   await Promise.race([
+     Promise.resolve(serverUsersReady),
+     new Promise(resolve => setTimeout(resolve, 2500))
+   ]);
+ } catch(e) { console.warn("Account server unavailable during auth; using local account cache.", e); }
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
  if(window.__registerMode){
   if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
   if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
-  const existingKey=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
-  if(existingKey)return $("authMsg").textContent="That username already exists.";
-  users[u]=makeAccount(u,p);saveUsers();enter(u);
+  if(users[u])return $("authMsg").textContent="That username already exists.";
+  users[u]=makeAccount(u,p);
+  try { saveUsers(); } catch(e) { console.warn("Signup local save failed", e); }
+  enter(u);
  }else{
   const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
   const loginKey = key || u;
@@ -381,7 +382,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- account.xp ??= Number(account.tokens||0); account.tokens ??= 0; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
+ account.tokens ??= 0; account.xp ??= 0; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -653,13 +654,7 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
  const rarity=pack === "VERITY" ? "Intrustdent" : (pack === "FESTIVAL EXOTIC" ? (festivalRarityForItem(item)||"Untrusted") : ["Common","Rare","Epic","Chroma","Mythic"][ri]);
  users[u].inventory=users[u].inventory||[];
  for(let n=0;n<qty;n++){
-   users[u].inventory.push({
-     id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),
-     pack,item,rarity,
-     adminGift:true,
-     giftedBy:current,
-     giftedAt:Date.now()
-   });
+   users[u].inventory.push({id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),pack,item,rarity});
  }
  saveUsers();
  if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
@@ -672,17 +667,12 @@ if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTok
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
  if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
- const fullAdmin=isAdminAccount();
- const infiniteCoins=fullAdmin && !!$("adminCoinsInf")?.checked;
- const infiniteTokens=fullAdmin && !!$("adminTokensInf")?.checked;
+ const infiniteCoins=!!$("adminCoinsInf")?.checked;
+ const infiniteTokens=!!$("adminTokensInf")?.checked;
  const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
- const max=fullAdmin?Number.POSITIVE_INFINITY:10000;
- if(!infiniteCoins && (!Number.isFinite(c)||c<0||c>max))return alert(fullAdmin?"Enter a valid Token amount or enable ∞ Infinite Tokens.":"Partner balance limit is 10,000 Tokens.");
- if(!infiniteTokens && (!Number.isFinite(t)||t<0||t>max))return alert(fullAdmin?"Enter a valid EXP amount or enable ∞ Infinite EXP.":"Partner EXP edit limit is 10,000.");
- a.coins=infiniteCoins?Infinity:Math.floor(c);
- a.xp=infiniteTokens?Infinity:Math.floor(t);
- a.tokens=a.xp;
- saveUsers();
+ if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
+ if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞ Infinite EXP.");
+ a.coins=infiniteCoins?Infinity:Math.floor(c);a.xp=infiniteTokens?Infinity:Math.floor(t);a.tokens=a.xp;saveUsers();
  if(u===current)account=a;
  renderAll();refreshAdmin();alert("Updated "+u);
 };

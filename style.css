@@ -459,3 +459,6 @@ body:after{display:none}
 @media(max-width:560px){.landing-actions{top:12px;right:12px}.landing-btn{width:120px;height:48px;font-size:17px}}
 
 @media(max-width:700px){.landing-actions{top:18px;right:18px;gap:8px}.landing-btn{font-size:18px;padding:10px 18px}.landing-credit{left:5%;top:60%;font-size:16px}}
+
+.auth-screen.hidden{display:none!important}
+.landing-screen.hidden{display:none!important}

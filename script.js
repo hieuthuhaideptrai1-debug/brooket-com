@@ -409,6 +409,8 @@ function enter(u){
  if(account.banned){localStorage.removeItem("pm_current"); $("authMsg").textContent="This account has been banned."; return;}
  try{ save(); }catch(e){ console.error("Save after login failed",e); }
  const authScreen=$("authScreen"), game=$("game");
+ const landingScreen=$("landingScreen");
+ if(landingScreen) { landingScreen.classList.add("hidden"); landingScreen.style.display="none"; }
  if(authScreen) { authScreen.classList.add("hidden"); authScreen.style.display="none"; }
  if(game) { game.classList.remove("hidden"); game.style.display="block"; }
  document.body.classList.add("logged-in");
@@ -418,7 +420,39 @@ function enter(u){
  setTimeout(sendRealtimePresence, 0);
  bazaarRefresh();
 }
+
 setAuthMode(false);
+
+// Explicitly wire every authentication button. The previous build only wired
+// the landing buttons, but the actual LOG IN / SIGN UP form buttons also need
+// handlers. Keep all auth/account logic above intact.
+(function wireAuthenticationButtons(){
+  function showAuth(register){
+    const landing=$("landingScreen");
+    const auth=$("authScreen");
+    if(landing){ landing.classList.add("hidden"); landing.style.display="none"; }
+    if(auth){ auth.classList.remove("hidden"); auth.style.display="flex"; }
+    setAuthMode(!!register);
+    const msg=$("authMsg"); if(msg) msg.textContent="";
+    const user=$("authUser"); if(user) setTimeout(()=>user.focus(),0);
+  }
+  const login=$("landingLogin"), signup=$("landingRegister");
+  if(login) login.onclick=(e)=>{e.preventDefault();showAuth(false);};
+  if(signup) signup.onclick=(e)=>{e.preventDefault();showAuth(true);};
+
+  const authBtn=$("authBtn");
+  if(authBtn) authBtn.onclick=(e)=>{e.preventDefault();auth();};
+
+  const switchAuth=$("switchAuth");
+  if(switchAuth) switchAuth.onclick=(e)=>{e.preventDefault();showAuth(!registerMode);};
+
+  [$("authUser"),$("authPass"),$("authPass2")].forEach(el=>{
+    if(!el) return;
+    el.addEventListener("keydown",e=>{
+      if(e.key==="Enter") { e.preventDefault(); auth(); }
+    });
+  });
+})();
 
 function update(){
  $("coins").textContent=Number(account.tokens ?? account.coins ?? 0).toLocaleString();

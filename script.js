@@ -389,19 +389,40 @@ function enter(u){
  setTimeout(sendRealtimePresence, 0);
  bazaarRefresh();
 }
-setAuthMode(false);
+function initBrooketAuthControls(){
+  const authBtn=$("authBtn");
+  const switchAuth=$("switchAuth");
+  const authUser=$("authUser");
+  const authPass=$("authPass");
+  const authPass2=$("authPass2");
 
-// Fix Login / Sign Up button handlers for the online deployment.
-if ($("authBtn")) $("authBtn").onclick = auth;
-if ($("switchAuth")) $("switchAuth").onclick = () => setAuthMode(!window.__registerMode);
-
-if ($("authPass")) $("authPass").addEventListener("keydown", e => {
-  if (e.key === "Enter") auth();
-});
-
-if ($("authPass2")) $("authPass2").addEventListener("keydown", e => {
-  if (e.key === "Enter") auth();
-});
+  if(authBtn){
+    authBtn.type="button";
+    authBtn.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); auth(); };
+  }
+  if(switchAuth){
+    switchAuth.onclick=(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      setAuthMode(!window.__registerMode);
+      if(authUser) authUser.focus();
+    };
+  }
+  [authUser,authPass,authPass2].forEach(el=>{
+    if(el) el.addEventListener("keydown",e=>{
+      if(e.key==="Enter"){
+        e.preventDefault();
+        auth();
+      }
+    });
+  });
+  setAuthMode(false);
+}
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",initBrooketAuthControls,{once:true});
+}else{
+  initBrooketAuthControls();
+}
 
 function update(){
  $("coins").textContent=account.coins.toLocaleString();
@@ -1323,109 +1344,20 @@ document.addEventListener('click',e=>{
   if(li && String(li.seller)===String(current)) bazaarRecall(li.id);
 }); // bazaar-own-card-recall
 
-
-/* Brooket Credits — live Admin/Partner directory */
-(function initBrooketCredits(){
-  function esc(v){
-    return String(v ?? "").replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[c]));
+/* Brooket Login/Sign Up safety net:
+   guarantees the controls remain clickable even if the landing UI re-renders them. */
+document.addEventListener("click", function brooketAuthClickGuard(e){
+  const btn=e.target.closest && e.target.closest("#authBtn");
+  if(btn){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(typeof auth==="function") auth();
+    return;
   }
-
-  function roleOf(a){
-    if(!a) return "user";
-    if(a.admin === true || String(a.role||"").toLowerCase() === "admin") return "admin";
-    if(String(a.role||"").toLowerCase() === "partner") return "partner";
-    return "user";
+  const sw=e.target.closest && e.target.closest("#switchAuth");
+  if(sw){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(typeof setAuthMode==="function") setAuthMode(!window.__registerMode);
   }
-
-  function renderCredits(){
-    const old = document.getElementById("brooketCreditsModal");
-    if(old) old.remove();
-
-    const modal = document.createElement("div");
-    modal.id = "brooketCreditsModal";
-    modal.style.cssText = `
-      position:fixed;inset:0;z-index:99999;display:flex;align-items:center;
-      justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);
-      padding:20px;box-sizing:border-box;
-    `;
-
-    const box = document.createElement("div");
-    box.style.cssText = `
-      width:min(620px,94vw);max-height:82vh;overflow:auto;border-radius:20px;
-      padding:24px;background:#171717;border:1px solid rgba(255,255,255,.22);
-      box-shadow:0 0 45px rgba(140,90,255,.35);color:#fff;font-family:Arial,sans-serif;
-    `;
-
-    const all = (typeof users === "object" && users) ? users : {};
-    const admins = Object.entries(all).filter(([,a]) => roleOf(a)==="admin");
-    const partners = Object.entries(all).filter(([,a]) => roleOf(a)==="partner");
-
-    const people = [
-      ...admins.map(([u,a]) => ({u,a,role:"Admin"})),
-      ...partners.map(([u,a]) => ({u,a,role:"Partner"}))
-    ];
-
-    box.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-        <h2 style="margin:0;font-size:28px;background:linear-gradient(90deg,#ff3b3b,#ffd43b,#35e27d,#35b8ff,#a855f7,#ff3b8d);background-size:300% 100%;animation:brooketCreditsRainbow 3s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent">
-          Brooket Credits
-        </h2>
-        <button id="brooketCreditsClose" style="border:0;border-radius:10px;padding:8px 13px;cursor:pointer;font-weight:700">✕</button>
-      </div>
-      <p style="margin:8px 0 18px;color:#bbb">Admin and Partner accounts are updated automatically.</p>
-      <div id="brooketCreditsList">
-        ${people.length ? people.map(({u,a,role}) => `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.07)">
-            <div>
-              <div style="font-weight:800;font-size:17px">${esc(a.displayName || u)}</div>
-              <div style="font-size:12px;color:#aaa">@${esc(u)}</div>
-            </div>
-            <div style="font-weight:900;padding:6px 10px;border-radius:999px;background:linear-gradient(90deg,#ff3b3b,#ffd43b,#35e27d,#35b8ff,#a855f7,#ff3b8d);background-size:300% 100%;animation:brooketCreditsRainbow 3s linear infinite;color:#fff;text-shadow:0 1px 3px #000">
-              ${role}
-            </div>
-          </div>
-        `).join("") : `<div style="padding:18px;text-align:center;color:#aaa">No Admin or Partner accounts found.</div>`}
-      </div>
-    `;
-
-    modal.appendChild(box);
-    document.body.appendChild(modal);
-
-    document.getElementById("brooketCreditsClose").onclick = () => modal.remove();
-    modal.addEventListener("click", e => { if(e.target === modal) modal.remove(); });
-  }
-
-  function installCreditsButton(){
-    if(!document.body || document.getElementById("brooketCreditsButton")) return;
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes brooketCreditsRainbow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
-      #brooketCreditsButton{
-        position:fixed;right:18px;bottom:18px;z-index:99998;
-        border:0;border-radius:999px;padding:10px 17px;cursor:pointer;
-        font-weight:900;color:#fff;background:linear-gradient(90deg,#ff3b3b,#ffd43b,#35e27d,#35b8ff,#a855f7,#ff3b8d);
-        background-size:300% 100%;animation:brooketCreditsRainbow 3s linear infinite;
-        box-shadow:0 6px 24px rgba(0,0,0,.35);
-      }
-    `;
-    document.head.appendChild(style);
-
-    const btn = document.createElement("button");
-    btn.id = "brooketCreditsButton";
-    btn.type = "button";
-    btn.textContent = "Credits";
-    btn.onclick = renderCredits;
-    document.body.appendChild(btn);
-  }
-
-  function boot(){
-    installCreditsButton();
-  }
-
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-
-  window.brooketRefreshCredits = renderCredits;
-})();
+}, true);

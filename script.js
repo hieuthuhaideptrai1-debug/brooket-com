@@ -335,14 +335,20 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- await serverUsersReady;
+ // Do not block Login/Sign Up if the shared server is slow or temporarily unavailable.
+ if (serverUsersReady) {
+   try { await Promise.race([serverUsersReady, new Promise(resolve => setTimeout(resolve, 3000))]); }
+   catch(e) { console.warn("Account sync unavailable; continuing with local cache.", e); }
+ }
+
  const u=$("authUser").value.trim(),p=$("authPass").value;
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
  if(window.__registerMode){
   if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
   if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
-  if(users[u])return $("authMsg").textContent="That username already exists.";
+  const existingKey=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
+  if(existingKey)return $("authMsg").textContent="That username already exists.";
   users[u]=makeAccount(u,p);saveUsers();enter(u);
  }else{
   const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());

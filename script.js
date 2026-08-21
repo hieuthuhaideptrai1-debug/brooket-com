@@ -392,6 +392,12 @@ function enter(u){
 }
 setAuthMode(false);
 
+// Auth button wiring: keep Login and Sign Up working after deployments.
+if ($("authBtn")) $("authBtn").onclick = () => auth();
+if ($("switchAuth")) $("switchAuth").onclick = () => setAuthMode(!window.__registerMode);
+if ($("authPass")) $("authPass").addEventListener("keydown", e => { if (e.key === "Enter") auth(); });
+if ($("authPass2")) $("authPass2").addEventListener("keydown", e => { if (e.key === "Enter") auth(); });
+
 function update(){
  $("coins").textContent=Number(account.coins||0).toLocaleString();
  $("tokens").textContent=Number(account.xp||0).toLocaleString();
@@ -643,6 +649,7 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
    users[u].inventory.push({id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),pack,item,rarity});
  }
  saveUsers();
+ if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
  if(u===current){account=users[u];renderAll();}
  refreshAdmin();
  $("adminGiveStatus").textContent=`🎁 Gave ${qty} × ${item} (${rarity}) from the ${pack} Pack to ${u}.`;
@@ -884,6 +891,7 @@ function renderAll(){
 
  renderTrade();
  renderChat();if(account.admin)refreshAdmin();
+ renderCredits();
 }
 
 function setAvatar(id){
@@ -1313,3 +1321,46 @@ document.addEventListener('click',e=>{
   const li=(bazaarListings||[])[idx];
   if(li && String(li.seller)===String(current)) bazaarRecall(li.id);
 }); // bazaar-own-card-recall
+
+
+// Public Credits: shows who currently holds Admin or Partner role.
+function installCreditsPage(){
+  if($("creditsNav")) return;
+  const adminNav=$("adminNav");
+  if(adminNav){
+    const btn=document.createElement("button");
+    btn.id="creditsNav"; btn.className="nav"; btn.dataset.page="credits"; btn.textContent="🏅 Credits";
+    adminNav.insertAdjacentElement("afterend",btn);
+    btn.onclick=()=>{
+      document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+      $("creditsPage")?.classList.add("active");
+      renderCredits();
+    };
+  }
+  const main=document.querySelector("main");
+  if(!main) return;
+  const sec=document.createElement("section");
+  sec.id="creditsPage"; sec.className="page";
+  sec.innerHTML='<div class="panel credits-panel"><h1>🏅 Credits</h1><p class="muted">Official Brooket Admins and Partners. This list updates automatically.</p><div id="creditsContent" class="credits-grid"></div></div>';
+  main.appendChild(sec);
+  renderCredits();
+}
+function renderCredits(){
+  const out=$("creditsContent"); if(!out)return;
+  const staff=Object.entries(users||{}).map(([u,a])=>[u,normalizeRole(a)]).filter(([,a])=>isAdminAccount(a)||isPartnerAccount(a)).sort((a,b)=>{
+    const ar=isAdminAccount(a[1])?0:1,br=isAdminAccount(b[1])?0:1;
+    return ar-br||a[0].localeCompare(b[0]);
+  });
+  out.innerHTML=staff.length?staff.map(([u,a])=>{
+    const admin=isAdminAccount(a);
+    return `<div class="credits-card ${admin?'credits-admin':'credits-partner'}"><div class="credits-icon">${admin?'👑':'🤝'}</div><div class="credits-info"><strong>${escapeHtml(a.displayName||u)}</strong><span>@${escapeHtml(u)}</span></div><div class="credits-role">${admin?'ADMIN':'PARTNER'}</div></div>`;
+  }).join(""):'<div class="muted">No Admins or Partners yet.</div>';
+}
+(function(){
+  const st=document.createElement("style");
+  st.textContent='.credits-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:18px}.credits-card{display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}.credits-icon{font-size:30px}.credits-info{display:flex;flex-direction:column;flex:1;min-width:0}.credits-info strong{font-size:16px}.credits-info span{opacity:.65;font-size:13px}.credits-role{font-weight:800;font-size:12px;letter-spacing:.08em}.credits-admin .credits-role{color:#ffd54a}.credits-partner .credits-role{color:#7ee7ff}';
+  document.head.appendChild(st);
+})();
+installCreditsPage();

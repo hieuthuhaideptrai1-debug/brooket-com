@@ -10,11 +10,9 @@
 <div id="landingScreen" class="landing-screen">
   <div class="landing-overlay"></div>
   <div class="landing-actions">
-    <button id="landingLogin" class="landing-btn">Login</button>
-    <button id="landingRegister" class="landing-btn">Sign Up</button>
+    <button id="landingLogin" class="landing-btn" type="button">Login</button>
+    <button id="landingRegister" class="landing-btn" type="button">Sign Up</button>
   </div>
-  <div class="landing-credit">created by Blooketstudio</div>
-  <div class="landing-copy">© 2026 Brooket</div>
 </div>
 <div id="authScreen" class="auth-screen hidden">
   <div class="auth-card">
@@ -34,7 +32,7 @@
 <header class="topbar">
   <div class="brand">BROOK<span>ET</span></div>
   <div class="topbar-spacer"></div>
-  <div class="coins">Tokens <b id="coins">0</b></div><div class="coins">ESP <b id="tokens">0</b></div>
+  <div class="coins">Tokens <b id="coins">0</b></div><div class="coins">EXP <b id="exp">0</b></div>
   <div class="player" id="playerName">Player</div>
 </header>
 
@@ -99,7 +97,7 @@
 <h1>🛡️ Admin Panel</h1>
 <p class="muted">Only admin accounts can see this area.</p>
 <div class="admin-grid">
-<div class="admin-card"><h3>💰 Edit Balance</h3><select id="adminPlayer"></select><input id="adminCoins" type="number" min="0" placeholder="New Token amount"><label class="inf-toggle"><input id="adminCoinsInf" type="checkbox"> ∞ Infinite Tokens</label><input id="adminTokens" type="number" min="0" placeholder="New ESP amount"><label class="inf-toggle"><input id="adminTokensInf" type="checkbox"> ∞ Infinite ESP</label><button id="adminApplyBalance" class="small">Apply</button></div>
+<div class="admin-card"><h3>💰 Edit Balance</h3><select id="adminPlayer"></select><input id="adminCoins" type="number" min="0" placeholder="New Token amount"><label class="inf-toggle"><input id="adminCoinsInf" type="checkbox"> ∞ Infinite Tokens</label><input id="adminTokens" type="number" min="0" placeholder="New EXP amount"><label class="inf-toggle"><input id="adminTokensInf" type="checkbox"> ∞ Infinite EXP</label><button id="adminApplyBalance" class="small">Apply</button></div>
 <div class="admin-card"><h3>🔨 Ban / Mute</h3><select id="adminPlayerMod"></select><button id="adminBan" class="danger">Ban / Unban</button><button id="adminMute" class="small">Mute / Unmute</button><div id="adminModStatus" class="muted"></div></div>
 <div class="admin-card">
 <h3>🎁 Give Blook</h3>

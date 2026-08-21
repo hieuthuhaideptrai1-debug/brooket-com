@@ -106,9 +106,9 @@ const server = http.createServer((req,res)=>{
   if(urlPath === '/api/leaderboard' && req.method === 'GET') {
     const leaderboard=Object.entries(users).map(([username,u])=>({
       username,
-      coins:Number(u.coins||0),
+      tokens:Number(u.tokens ?? u.coins ?? 0),
       opened:Number(u.opened||0)
-    })).sort((a,b)=>b.coins-a.coins||a.username.localeCompare(b.username));
+    })).sort((a,b)=>b.tokens-a.tokens||a.username.localeCompare(b.username));
     res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});
     res.end(JSON.stringify({ok:true,leaderboard}));
     return;

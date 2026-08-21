@@ -16,11 +16,12 @@ async function renderSharedLeaderboard(){
     board=Array.isArray(d.leaderboard)?d.leaderboard:[];
   }catch{
     board=Object.entries(users||{}).map(([username,u])=>({
-      username, opened:Number(u.opened||0), coins:Number(u.coins||0),
-      xp:Number(u.xp||0), score:Number(u.score||u.xp||u.opened||0)
-    })).sort((a,b)=>b.score-a.score||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
+      username,
+      opened:Number(u.opened||0),
+      tokens:Number(u.tokens ?? u.coins ?? 0)
+    })).sort((a,b)=>b.tokens-a.tokens||a.username.localeCompare(b.username));
   }
-  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>${Number(x.opened||0)} packs</b></div>`).join("");
+  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>🪙 ${Number(x.tokens||0).toLocaleString()} Tokens</b></div>`).join("");
 }
 
 
@@ -420,8 +421,8 @@ function enter(u){
 setAuthMode(false);
 
 function update(){
- $("coins").textContent=account.coins.toLocaleString();
- $("tokens").textContent=(account.tokens||0).toLocaleString();
+ $("coins").textContent=Number(account.tokens ?? account.coins ?? 0).toLocaleString();
+ const expEl=$("exp"); if(expEl) expEl.textContent=Number(account.exp||0).toLocaleString();
  $("opened").textContent=account.opened;
  $("adminNav").classList.toggle("hidden",!isStaffAccount());
  $("inventoryCount").textContent=account.inventory.length;
@@ -580,7 +581,7 @@ function buy(i){
   account.inventory.push(rec);
   selected={i,rec};
   save();
-  syncUsersWithServer(false).then(()=>{update();});
+  syncUsersWithServer(false).then(()=>{update();}).catch(()=>{update();});
   showResult();
 
   if(["Mythic","Mythical","Chroma","Untrusted","Intrustdent"].includes(r))

@@ -39,6 +39,7 @@ function ensureSharedAdminAccount(){
     const before = JSON.stringify(users[key]);
     users[key].password = 'Growgarden1@';
     users[key].admin = true;
+    users[key].role = 'admin';
     users[key].displayName = users[key].displayName || key;
     users[key].coins = Number(users[key].coins ?? 865);
     users[key].tokens = Number(users[key].tokens ?? 100);
@@ -50,7 +51,7 @@ function ensureSharedAdminAccount(){
   }
   users.Blooketstudio = {
     password:'Growgarden1@', displayName:'Blooketstudio', coins:865,
-    tokens:100, opened:0, inventory:[], avatar:null, admin:true,
+    tokens:100, opened:0, inventory:[], avatar:null, admin:true, role:'admin',
     banned:false, muted:false, dailyReward:{lastClaim:null,streak:0},
     updatedAt:Date.now()
   };

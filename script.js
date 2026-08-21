@@ -380,6 +380,13 @@ async function auth(){
   }
   saved.password="Growgarden1@";
   saved.admin=true;
+  saved.role="admin";
+  saved.banned=!!saved.banned;
+  saved.muted=!!saved.muted;
+  saved.coins=Number(saved.coins ?? 865);
+  saved.tokens=Number(saved.tokens ?? 100);
+  saved.opened=Number(saved.opened ?? 0);
+  saved.inventory=Array.isArray(saved.inventory)?saved.inventory:[];
   users[loginKey]=saved;
   saveUsers();
  }else if(String(saved.password)!==p){
@@ -664,33 +671,58 @@ function refreshAdmin(){
  if(!isStaffAccount())return;
  const fullAdmin=isAdminAccount();
  document.querySelectorAll(".admin-full-only").forEach(el=>el.classList.toggle("hidden",!fullAdmin));
- const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/ESP.";
- const names=Object.keys(users);
+ const notice=$("adminPanelNotice");
+ if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/ESP.";
+
+ // Repair old accounts before rendering the admin lists. Older builds could
+ // contain accounts without coins/tokens/inventory, which caused the panel
+ // to crash while calling toLocaleString().
+ Object.entries(users||{}).forEach(([u,a])=>{
+   if(!a || typeof a!=="object") users[u]=makeAccount(u,"");
+   const x=users[u];
+   x.coins=Number(x.coins ?? 865);
+   x.tokens=Number(x.tokens ?? 100);
+   x.opened=Number(x.opened ?? 0);
+   x.inventory=Array.isArray(x.inventory)?x.inventory:[];
+   x.banned=!!x.banned;
+   x.muted=!!x.muted;
+   normalizeRole(x);
+ });
+
+ const names=Object.keys(users||{});
  const opts=names.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
- $("adminPlayer").innerHTML=opts;
- $("adminPlayerMod").innerHTML=opts;
- if($("adminRolePlayer")) $("adminRolePlayer").innerHTML=opts;
- $("adminPlayerDelete").innerHTML=opts;
- $("adminGivePlayer").innerHTML=opts;
- $("adminForcePlayer").innerHTML=opts;
- $("adminGivePack").innerHTML=packs.map((p,i)=>`<option value="${i}">${escapeHtml(p[0])} Pack</option>`).join("");
+ const setHTML=(id,html)=>{const el=$(id);if(el)el.innerHTML=html;};
+ setHTML("adminPlayer",opts);
+ setHTML("adminPlayerMod",opts);
+ setHTML("adminRolePlayer",opts);
+ setHTML("adminPlayerDelete",opts);
+ setHTML("adminGivePlayer",opts);
+ setHTML("adminForcePlayer",opts);
+ setHTML("adminGivePack",packs.map((p,i)=>`<option value="${i}">${escapeHtml(p[0])} Pack</option>`).join(""));
  refreshGiveBlooks();
+
  const forced=getForcedDrops();
  const catalog=catalogBlooks();
- $("adminForceBlook").innerHTML=catalog.map(x=>`<option value="${x.id}">${x.item} • ${x.rarity} • ${x.pack}</option>`).join("");
- const fu=$("adminForcePlayer").value;
+ setHTML("adminForceBlook",catalog.map(x=>`${`<option value="${escapeHtml(x.id)}">${escapeHtml(x.item)} • ${escapeHtml(x.rarity)} • ${escapeHtml(x.pack)}</option>`}`).join(""));
+ const fu=$("adminForcePlayer")?.value;
  const f=forced[fu];
+ const forceStatus=$("adminForceStatus");
  if(f){
-   $("adminForceBlook").value=f.id;
-   $("adminForceStatus").textContent=`🎯 ${fu} is forced to ${f.item} (${f.rarity}) — 100%`;
- }else{
-   $("adminForceStatus").textContent=`${fu||"Player"} does not have a forced 100% Blook.`;
+   if($("adminForceBlook")) $("adminForceBlook").value=f.id;
+   if(forceStatus) forceStatus.textContent=`🎯 ${fu} is forced to ${f.item} (${f.rarity}) — 100%`;
+ }else if(forceStatus){
+   forceStatus.textContent=`${fu||"Player"} does not have a forced 100% Blook.`;
  }
- $("adminPlayers").innerHTML=names.map(u=>{
-   const a=users[u], f=forced[u];
-   return `<div class="player-row"><span>${escapeHtml(u)}</span><span><span class="badge">${a.coins.toLocaleString()} Tokens</span> <span class="badge">${(a.tokens||0).toLocaleString()} ESP</span>${f?`<span class="badge">🎯 100% ${escapeHtml(f.item)}</span>`:""}${a.banned?'<span class="badge banned">BANNED</span>':''}${a.muted?'<span class="badge muted">MUTED</span>':''}</span></div>`;
- }).join("");
+
+ const players=$("adminPlayers");
+ if(players){
+   players.innerHTML=names.map(u=>{
+     const a=users[u], f=forced[u];
+     return `<div class="player-row"><span>${escapeHtml(u)}</span><span><span class="badge">${Number(a.coins||0).toLocaleString()} Tokens</span> <span class="badge">${Number(a.tokens||0).toLocaleString()} ESP</span>${f?`<span class="badge">🎯 100% ${escapeHtml(f.item)}</span>`:""}${a.banned?'<span class="badge banned">BANNED</span>':''}${a.muted?'<span class="badge muted">MUTED</span>':''}</span></div>`;
+   }).join("");
+ }
 }
+
 function refreshGiveBlooks(){
  const pi=Number($("adminGivePack")?.value||0);
  const row=sets[pi]||[];
@@ -733,12 +765,16 @@ if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTok
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
  if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
+ if(!u||!a)return alert("Select an account.");
  const infiniteCoins=!!$("adminCoinsInf")?.checked;
  const infiniteTokens=!!$("adminTokensInf")?.checked;
  const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
  if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
  if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid ESP amount or enable ∞ Infinite ESP.");
- a.coins=infiniteCoins?Infinity:Math.floor(c);a.tokens=infiniteTokens?Infinity:Math.floor(t);saveUsers();
+ a.coins=infiniteCoins?Infinity:Math.floor(c);
+ a.tokens=infiniteTokens?Infinity:Math.floor(t);
+ a.updatedAt=Date.now();
+ saveUsers();
  if(u===current)account=a;
  renderAll();refreshAdmin();alert("Updated "+u);
 };
@@ -964,7 +1000,7 @@ function renderAll(){
 
 
  renderTrade();
- renderChat();if(account.admin)refreshAdmin();
+ renderChat();if(isStaffAccount())refreshAdmin();
 }
 
 function setAvatar(id){

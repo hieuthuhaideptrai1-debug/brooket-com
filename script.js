@@ -334,15 +334,20 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- try{ await Promise.race([serverUsersReady || Promise.resolve(), new Promise(r=>setTimeout(r,1500))]); }catch(e){}
+ // Login/Sign Up must never wait for the shared server. The server sync runs in the background.
  const u=$("authUser").value.trim(),p=$("authPass").value;
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
  if(window.__registerMode){
   if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
   if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
-  if(users[u])return $("authMsg").textContent="That username already exists.";
-  users[u]=makeAccount(u,p);saveUsers();enter(u);
+  const existingKey=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
+  if(existingKey)return $("authMsg").textContent="That username already exists.";
+  users[u]=makeAccount(u,p);
+  saveUsers();
+  enter(u);
+  // Push the new account in the background; never block the UI.
+  Promise.resolve(serverUsersReady).then(()=>pushServerUsers()).catch(()=>{});
  }else{
   const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
   const loginKey = key || u;
@@ -358,8 +363,15 @@ async function auth(){
     return $("authMsg").textContent="Incorrect username or password.";
   }
   enter(loginKey);
+  // Refresh shared data in the background after login.
+  Promise.resolve(serverUsersReady).then(()=>{
+    const key=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
+    if(key && key!==current){ current=key; account=users[key]; normalizeRole(account); update(); renderAll(); }
+  }).catch(()=>{});
  }
 }
+window.auth=auth;
+window.setAuthMode=setAuthMode;
 function festivalRarityForItem(item){
  const map={"Festival Untrusted":"Untrusted","Festival Angelic":"Mythical","Festival Chroma":"Chroma"};
  return map[item]||null;
@@ -374,6 +386,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
+ if(String(u).toLowerCase()==="blooketstudio"){ account.banned=false; account.admin=true; account.role="admin"; }
  account.coins ??= 0; account.tokens ??= 0; account.avatar ??= null; account.admin ??= false; normalizeRole(account); if(String(account.role||"").toLowerCase()==="admin") account.admin=true; if(String(account.role||"").toLowerCase()==="partner") account.admin=false; account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});

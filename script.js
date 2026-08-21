@@ -14,14 +14,13 @@ async function renderSharedLeaderboard(){
     if(!r.ok)throw new Error("leaderboard request failed");
     const d=await r.json();
     board=Array.isArray(d.leaderboard)?d.leaderboard:[];
-    board.sort((a,b)=>Number(b.coins??b.tokens??0)-Number(a.coins??a.tokens??0)||String(a.username||"").localeCompare(String(b.username||"")));
   }catch{
     board=Object.entries(users||{}).map(([username,u])=>({
       username, opened:Number(u.opened||0), coins:Number(u.coins||0),
-      xp:Number(u.xp||0)
-    })).sort((a,b)=>b.coins-a.coins||a.username.localeCompare(b.username));
+      xp:Number(u.xp||0), score:Number(u.score||u.xp||u.opened||0)
+    })).sort((a,b)=>b.score-a.score||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
   }
-  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>🪙 ${Number(x.coins??x.tokens??0).toLocaleString()} Token</b></div>`).join("");
+  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>${Number(x.opened||0)} packs</b></div>`).join("");
 }
 
 
@@ -171,8 +170,6 @@ async function loadServerUsers(){
       admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
-      admin.banned = false;
-      admin.muted = !!admin.muted;
       admin.coins=Number(admin.coins ?? 865);
       admin.tokens=Number(admin.tokens ?? 100);
       admin.opened=Number(admin.opened ?? 0);
@@ -336,23 +333,15 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
+ await serverUsersReady;
  const u=$("authUser").value.trim(),p=$("authPass").value;
- // Do not block Login/Sign Up if the shared server is slow or unavailable.
- try {
-   await Promise.race([
-     Promise.resolve(serverUsersReady),
-     new Promise(resolve => setTimeout(resolve, 2500))
-   ]);
- } catch(e) { console.warn("Account server unavailable during auth; using local account cache.", e); }
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
  if(window.__registerMode){
   if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
   if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
   if(users[u])return $("authMsg").textContent="That username already exists.";
-  users[u]=makeAccount(u,p);
-  try { saveUsers(); } catch(e) { console.warn("Signup local save failed", e); }
-  enter(u);
+  users[u]=makeAccount(u,p);saveUsers();enter(u);
  }else{
   const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
   const loginKey = key || u;
@@ -384,7 +373,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- account.tokens ??= 0; account.xp ??= 0; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
+ account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -402,15 +391,9 @@ function enter(u){
 }
 setAuthMode(false);
 
-// Auth button wiring: keep Login and Sign Up working after deployments.
-if ($("authBtn")) $("authBtn").onclick = () => auth();
-if ($("switchAuth")) $("switchAuth").onclick = () => setAuthMode(!window.__registerMode);
-if ($("authPass")) $("authPass").addEventListener("keydown", e => { if (e.key === "Enter") auth(); });
-if ($("authPass2")) $("authPass2").addEventListener("keydown", e => { if (e.key === "Enter") auth(); });
-
 function update(){
- $("coins").textContent=Number(account.coins||0).toLocaleString();
- $("tokens").textContent=Number(account.xp||0).toLocaleString();
+ $("coins").textContent=account.coins.toLocaleString();
+ $("tokens").textContent=(account.tokens||0).toLocaleString();
  $("opened").textContent=account.opened;
  $("adminNav").classList.toggle("hidden",!isStaffAccount());
  $("inventoryCount").textContent=account.inventory.length;
@@ -550,8 +533,6 @@ function buy(i){
  }
  else if(forced){ r=forced.rarity;b=forced.item; }
  else{ r=rarity();b=sets[i][rarityIndex(r)]; }
- const expByRarity={Common:2,Uncommon:5,Rare:10,Epic:20,Chroma:50,Mythical:100,Mythic:100,Untrusted:10000,Intrustdent:5000};
- account.xp=(Number(account.xp)||0)+(expByRarity[r]||0);
  const rec={id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),pack:packs[i][0],item:b,rarity:r};
  account.inventory.push(rec);selected={i,rec};save();syncUsersWithServer(false).then(()=>{update();});showResult();
  if(r==="Mythic"||r==="Mythical"||r==="Chroma"||r==="Intrustdent")globalAnnouncement(account.displayName,b,r,packs[i][0]);
@@ -595,11 +576,15 @@ function isStaffAccount(a=account){ return isAdminAccount(a) || isPartnerAccount
 function normalizeRole(a){ if(!a) return a; if(a.admin===true) a.role="admin"; else if(!["user","partner","admin"].includes(String(a.role||"").toLowerCase())) a.role="user"; return a; }
 function requireAdmin(){if(!isAdminAccount()){alert("You do not have admin permission.");return false}return true}
 function requireStaff(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
+function requirePartnerOrAdminBalance(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
 function refreshAdmin(){
  if(!isStaffAccount())return;
  const fullAdmin=isAdminAccount();
  document.querySelectorAll(".admin-full-only").forEach(el=>el.classList.toggle("hidden",!fullAdmin));
- const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/EXP.";
+ const partnerOnlyIds=["adminPlayer","adminPlayerMod","adminMute","adminCoins","adminApplyBalance","adminCoinsInf"];
+ const forbiddenPartnerIds=["adminGivePlayer","adminGivePack","adminGiveBlook","adminGiveQty","adminGiveApply","adminForcePlayer","adminForceBlook","adminForceApply","adminForceClear","adminBan","adminRolePlayer","adminRoleSelect","adminRoleApply","adminPlayerDelete","adminDelete"];
+ if(!fullAdmin){for(const id of forbiddenPartnerIds){const el=$(id);if(el)el.classList.add("hidden");} for(const id of ["adminTokens","adminTokensInf"]){const el=$(id);if(el)el.classList.add("hidden");}} else {for(const id of forbiddenPartnerIds){const el=$(id);if(el)el.classList.remove("hidden");} for(const id of ["adminTokens","adminTokensInf"]){const el=$(id);if(el)el.classList.remove("hidden");}}
+ const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: Mute/Unmute and Edit Token balance up to 10,000.";
  const names=Object.keys(users);
  const opts=names.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
  $("adminPlayer").innerHTML=opts;
@@ -623,7 +608,7 @@ function refreshAdmin(){
  }
  $("adminPlayers").innerHTML=names.map(u=>{
    const a=users[u], f=forced[u];
-   return `<div class="player-row"><span>${escapeHtml(u)}</span><span><span class="badge">${a.coins.toLocaleString()} Tokens</span> <span class="badge">${(a.tokens||0).toLocaleString()} EXP</span>${f?`<span class="badge">🎯 100% ${escapeHtml(f.item)}</span>`:""}${a.banned?'<span class="badge banned">BANNED</span>':''}${a.muted?'<span class="badge muted">MUTED</span>':''}</span></div>`;
+   return `<div class="player-row"><span>${escapeHtml(u)}</span><span><span class="badge">${a.coins.toLocaleString()} Tokens</span> <span class="badge">${(a.tokens||0).toLocaleString()} ESP</span>${f?`<span class="badge">🎯 100% ${escapeHtml(f.item)}</span>`:""}${a.banned?'<span class="badge banned">BANNED</span>':''}${a.muted?'<span class="badge muted">MUTED</span>':''}</span></div>`;
  }).join("");
 }
 function refreshGiveBlooks(){
@@ -658,9 +643,7 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
  for(let n=0;n<qty;n++){
    users[u].inventory.push({id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),pack,item,rarity});
  }
- users[u].updatedAt=Date.now();
  saveUsers();
- if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{});
  if(u===current){account=users[u];renderAll();}
  refreshAdmin();
  $("adminGiveStatus").textContent=`🎁 Gave ${qty} × ${item} (${rarity}) from the ${pack} Pack to ${u}.`;
@@ -670,47 +653,31 @@ if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTok
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
  if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
- const partner=isPartnerAccount();
- const infiniteCoins=!!$("adminCoinsInf")?.checked;
- const infiniteTokens=!!$("adminTokensInf")?.checked;
- const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
- if(partner){
-   if(!Number.isFinite(c)||c<0||c>10000)return alert("Partner balance limit is 10,000 Tokens.");
+ if(!u||!a)return alert("Select an account.");
+ const c=Number($("adminCoins").value);
+ if(!Number.isFinite(c)||c<0)return alert("Enter a valid Token amount.");
+ if(isPartnerAccount()){
+   if(c>10000)return alert("Partner balance limit is 10,000 Tokens.");
    a.coins=Math.floor(c);
  }else{
-   if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
-   if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞ Infinite EXP.");
-   a.coins=infiniteCoins?Infinity:Math.floor(c);a.xp=infiniteTokens?Infinity:Math.floor(t);a.tokens=a.xp;
+   const infiniteCoins=!!$("adminCoinsInf")?.checked;
+   a.coins=infiniteCoins?Infinity:Math.floor(c);
+   if($("adminTokensInf")?.checked){a.tokens=Infinity;}else{const t=Number($("adminTokens").value); if(!Number.isFinite(t)||t<0)return alert("Enter a valid ESP amount."); a.tokens=Math.floor(t);}
  }
- a.updatedAt=Date.now(); saveUsers();
- if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{});
- if(u===current)account=a;
- renderAll();refreshAdmin();alert("Updated "+u);
+ saveUsers(); if(u===current)account=a; renderAll();refreshAdmin();alert("Updated "+u);
 };
 if($("adminBan")) $("adminBan").onclick=()=>{
- // Ban/Unban is Admin-only. Partners keep only Mute + Balance <= 10,000.
  if(!requireAdmin())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
- const a=users[u];
- const willBan=!a.banned;
- const targetLabel = u.toLowerCase()==="blooketstudio" ? "the Blooketstudio account" : "@"+u;
- if(willBan){
-   const ok=confirm("Are you sure you want to ban "+targetLabel+"?\n\nYou can unban this account later from the same button.");
-   if(!ok)return;
- }
- a.banned=willBan;
- a.updatedAt=Date.now();
- saveUsers();
- if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{});
- refreshAdmin();
- if(u===current && willBan){
-   localStorage.removeItem("pm_current");
-   alert("Account @" + u + " has been banned. You will be logged out.");
-   location.reload();
- } else {
-   alert(targetLabel+(willBan?" has been banned.":" has been unbanned."));
- }
+ if(String(u).toLowerCase()==="blooketstudio" && !users[u].banned)return alert("The main Blooketstudio account cannot be banned.");
+ const willBan=!users[u].banned;
+ const action=willBan?"ban":"unban";
+ if(!confirm(`Are you sure you want to ${action} @${u}?`))return;
+ users[u].banned=willBan;
+ users[u].updatedAt=Date.now();
+ saveUsers(); refreshAdmin();
+ if(u===current && willBan){localStorage.removeItem("pm_current"); alert("Account @"+u+" has been banned. You will be logged out."); location.reload();}
 };
 if($("adminMute")) $("adminMute").onclick=()=>{
  if(!requireStaff())return;
@@ -721,7 +688,7 @@ if($("adminMute")) $("adminMute").onclick=()=>{
 };
 
 if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
-if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{}); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
+if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
  if(!requireAdmin())return;
@@ -748,7 +715,7 @@ if($("adminDelete")) $("adminDelete").onclick=()=>{
 
  const ok=confirm(
    "WARNING: Delete account @" + u + "?\\n\\n" +
-   "All Tokens, EXP, Blooks, avatar data, and account data will be deleted from this browser.\\n\\n" +
+   "All Tokens, ESP, Blooks, avatar data, and account data will be deleted from this browser.\\n\\n" +
    "This action cannot be undone."
  );
  if(!ok)return;
@@ -921,7 +888,6 @@ function renderAll(){
 
  renderTrade();
  renderChat();if(account.admin)refreshAdmin();
- renderCredits();
 }
 
 function setAvatar(id){
@@ -1161,6 +1127,7 @@ window.blooketstudioAdminBackup = {
 };
 
 /* Admin persistence is handled by ensureAdminAccount() above; no destructive reset is performed. */
+try{ if(users["blooketstudio"]){ users["blooketstudio"].admin=true; users["blooketstudio"].role="admin"; users["blooketstudio"].banned=false; users["blooketstudio"].muted=false; saveUsers(); } }catch{}
 
 // Bazaar: shared player-to-player marketplace. Admins can also buy/list, but nothing is purchasable unless a player has listed it.
 const BAZAAR_PRICES={Common:18,Rare:55,Epic:140,Chroma:850,Mythic:2500,Intrustdent:10000,Uncommon:30,Untrusted:100000,Mythical:10000};
@@ -1351,46 +1318,3 @@ document.addEventListener('click',e=>{
   const li=(bazaarListings||[])[idx];
   if(li && String(li.seller)===String(current)) bazaarRecall(li.id);
 }); // bazaar-own-card-recall
-
-
-// Public Credits: shows who currently holds Admin or Partner role.
-function installCreditsPage(){
-  if($("creditsNav")) return;
-  const adminNav=$("adminNav");
-  if(adminNav){
-    const btn=document.createElement("button");
-    btn.id="creditsNav"; btn.className="nav"; btn.dataset.page="credits"; btn.textContent="🏅 Credits";
-    adminNav.insertAdjacentElement("afterend",btn);
-    btn.onclick=()=>{
-      document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));
-      btn.classList.add("active");
-      document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
-      $("creditsPage")?.classList.add("active");
-      renderCredits();
-    };
-  }
-  const main=document.querySelector("main");
-  if(!main) return;
-  const sec=document.createElement("section");
-  sec.id="creditsPage"; sec.className="page";
-  sec.innerHTML='<div class="panel credits-panel"><h1>🏅 Credits</h1><p class="muted">Official Brooket Admins and Partners. This list updates automatically.</p><div id="creditsContent" class="credits-grid"></div></div>';
-  main.appendChild(sec);
-  renderCredits();
-}
-function renderCredits(){
-  const out=$("creditsContent"); if(!out)return;
-  const staff=Object.entries(users||{}).map(([u,a])=>[u,normalizeRole(a)]).filter(([,a])=>isAdminAccount(a)||isPartnerAccount(a)).sort((a,b)=>{
-    const ar=isAdminAccount(a[1])?0:1,br=isAdminAccount(b[1])?0:1;
-    return ar-br||a[0].localeCompare(b[0]);
-  });
-  out.innerHTML=staff.length?staff.map(([u,a])=>{
-    const admin=isAdminAccount(a);
-    return `<div class="credits-card ${admin?'credits-admin':'credits-partner'}"><div class="credits-icon">${admin?'👑':'🤝'}</div><div class="credits-info"><strong>${escapeHtml(a.displayName||u)}</strong><span>@${escapeHtml(u)}</span></div><div class="credits-role">${admin?'ADMIN':'PARTNER'}</div></div>`;
-  }).join(""):'<div class="muted">No Admins or Partners yet.</div>';
-}
-(function(){
-  const st=document.createElement("style");
-  st.textContent='.credits-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:18px}.credits-card{display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}.credits-icon{font-size:30px}.credits-info{display:flex;flex-direction:column;flex:1;min-width:0}.credits-info strong{font-size:16px}.credits-info span{opacity:.65;font-size:13px}.credits-role{font-weight:800;font-size:12px;letter-spacing:.08em}.credits-admin .credits-role{color:#ffd54a}.credits-partner .credits-role{color:#7ee7ff}';
-  document.head.appendChild(st);
-})();
-installCreditsPage();

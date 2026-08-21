@@ -16,12 +16,11 @@ async function renderSharedLeaderboard(){
     board=Array.isArray(d.leaderboard)?d.leaderboard:[];
   }catch{
     board=Object.entries(users||{}).map(([username,u])=>({
-      username, tokens:Number(u.tokens||0), opened:Number(u.opened||0), coins:Number(u.coins||0),
-      xp:Number(u.xp||0), score:Number(u.xp||0)
-    })).sort((a,b)=>b.tokens-a.tokens||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
+      username, opened:Number(u.opened||0), coins:Number(u.coins||0),
+      xp:Number(u.xp||0), score:Number(u.score||u.xp||u.opened||0)
+    })).sort((a,b)=>b.score-a.score||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
   }
-  // Leaderboard ranking/display is based on Tokens. EXP is a separate progression stat.
-  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>${Number(x.tokens||0).toLocaleString()} Tokens</b></div>`).join("");
+  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>${Number(x.opened||0)} packs</b></div>`).join("");
 }
 
 
@@ -143,10 +142,7 @@ function markChangedAccounts(){
 }
 async function loadServerUsers(){
   try{
-    const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(),5000);
-    const r=await fetch(serverUsersUrl(),{cache:"no-store",signal:controller.signal});
-    clearTimeout(timeout);
+    const r=await fetch(serverUsersUrl(),{cache:"no-store"});
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const data=await r.json();
     const remote = data && data.users && typeof data.users === "object" && !Array.isArray(data.users) ? data.users : {};
@@ -167,10 +163,11 @@ async function loadServerUsers(){
     }
 
     // Always keep the canonical Admin account in THIS SAME shared map.
-    Object.entries(users||{}).forEach(([name, acc]) => { if (acc && typeof acc === "object") acc.admin = String(name).toLowerCase() === "blooketstudio"; }); const adminKey = Object.keys(users||{}).find(k => String(k).toLowerCase() === "blooketstudio");
+    const adminKey = Object.keys(users||{}).find(k => String(k).toLowerCase() === "blooketstudio");
     if(adminKey){
       const admin=users[adminKey];
       admin.admin=true;
+      admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
       admin.coins=Number(admin.coins ?? 865);
@@ -215,7 +212,6 @@ async function loadServerUsers(){
   }catch(e){
     serverAvailable=false;
     console.warn("Shared root server unavailable; using this browser's local cache.",e.message);
-    try{ if(Object.keys(users).length===0){ users.Blooketstudio=makeAccount("Blooketstudio","Growgarden1@"); users.Blooketstudio.admin=true; localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v)); } }catch{}
   }
   return users;
 }
@@ -300,7 +296,7 @@ function saveUsers(){
   if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
 }
 function save(){ if(account?.inventory) account.inventory=account.inventory.map(normalizeBlookRarity); users[current]=account;saveUsers()}
-function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
+function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
 const BLOOK_IMAGE_MAP=new Map(sets.flatMap(r=>r).map((item,i)=>[item,"assets/blooks/blook_"+i+".svg"]));
 /* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */
 const CUSTOM_BLOOK_IMAGES={"Festival Chroma":"assets/blooks/festival-chroma.png","Festival Angelic":"assets/blooks/festival-mythical.png","Festival Untrusted":"assets/blooks/festival-untrusted.png"};
@@ -337,36 +333,32 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
-  await serverUsersReady;
-  const u=$("authUser").value.trim(), p=$("authPass").value;
-  if(!u||!p) return $("authMsg").textContent="Please fill in all fields.";
-  if(!/^[A-Za-z0-9_]{3,20}$/.test(u)) return $("authMsg").textContent="Username must be 3–20 characters.";
-  try {
-    if(window.__registerMode){
-      if(p.length<4) return $("authMsg").textContent="Password must be at least 4 characters.";
-      if($("authPass2").value!==p) return $("authMsg").textContent="Passwords do not match.";
-      const r=await fetch(`${accountApiBase}/api/auth/register`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p}),cache:"no-store"});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok || !data.ok) throw new Error(data.error||"Unable to create account.");
-      if(data.users) users=data.users; else users[u]=data.account;
-      localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
-      lastSyncedUsers=cloneUsers(users); serverAvailable=true;
-      enter(data.username||u);
-    } else {
-      const r=await fetch(`${accountApiBase}/api/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p}),cache:"no-store"});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok || !data.ok) throw new Error(data.error||"Incorrect username or password.");
-      if(data.users) users=data.users; else users[data.username]=data.account;
-      localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
-      lastSyncedUsers=cloneUsers(users); serverAvailable=true;
-      enter(data.username||u);
-    }
-  } catch(e) {
-    console.error("Authentication failed:",e);
-    $("authMsg").textContent=e.message||"Unable to connect to the server.";
+ await serverUsersReady;
+ const u=$("authUser").value.trim(),p=$("authPass").value;
+ if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
+ if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
+ if(window.__registerMode){
+  if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
+  if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
+  if(users[u])return $("authMsg").textContent="That username already exists.";
+  users[u]=makeAccount(u,p);saveUsers();enter(u);
+ }else{
+  const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
+  const loginKey = key || u;
+  const saved = users[loginKey];
+  if(!saved) return $("authMsg").textContent="Incorrect username or password.";
+  if(String(loginKey).toLowerCase()==="blooketstudio"){
+    if(p!=="Growgarden1@") return $("authMsg").textContent="Incorrect username or password.";
+    saved.password="Growgarden1@";
+    saved.admin=true;
+    users[loginKey]=saved;
+    saveUsers();
+  }else if(saved.password!==p){
+    return $("authMsg").textContent="Incorrect username or password.";
   }
+  enter(loginKey);
+ }
 }
-
 function festivalRarityForItem(item){
  const map={"Festival Untrusted":"Untrusted","Festival Angelic":"Mythical","Festival Chroma":"Chroma"};
  return map[item]||null;
@@ -381,7 +373,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- account.tokens ??= 100; account.xp ??= 0; account.avatar ??= null; account.admin ??= false; account.banned ??= false; account.muted ??= false;
+ account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -399,35 +391,17 @@ function enter(u){
 }
 setAuthMode(false);
 
-// Sign Up / Log In mode switch.
-const __switchAuth = $("switchAuth");
-if (__switchAuth) __switchAuth.addEventListener("click", () => {
-  setAuthMode(!window.__registerMode);
-  $("authUser")?.focus();
-});
-
-// Login controls: bind both the button and Enter key.
-// This was missing in the public build, so clicking LOG IN did nothing.
-const __authBtn = $("authBtn");
-if (__authBtn) __authBtn.addEventListener("click", () => { auth().catch(e => { console.error(e); $("authMsg").textContent = "Unable to connect to the server. Please try again."; }); });
-const __authUser = $("authUser");
-const __authPass = $("authPass");
-if (__authUser) __authUser.addEventListener("keydown", e => { if (e.key === "Enter") __authPass?.focus(); });
-if (__authPass) __authPass.addEventListener("keydown", e => { if (e.key === "Enter") __authBtn?.click(); });
-const __authPass2 = $("authPass2");
-if (__authPass2) __authPass2.addEventListener("keydown", e => { if (e.key === "Enter") __authBtn?.click(); });
-
 function update(){
  $("coins").textContent=account.coins.toLocaleString();
- $("tokens").textContent=(account.xp||0).toLocaleString();
+ $("tokens").textContent=(account.tokens||0).toLocaleString();
  $("opened").textContent=account.opened;
- $("adminNav").classList.toggle("hidden",!account.admin);
+ $("adminNav").classList.toggle("hidden",!isStaffAccount());
  $("inventoryCount").textContent=account.inventory.length;
  $("playerName").innerHTML=`${getAvatarVisual(current)} <span>${escapeHtml(account.displayName)}</span>`;
 }
 
 function renderPacks(){
- const visiblePacks=packs.map((p,i)=>({p,i})).filter(({p})=>!p[4] || account?.admin);
+ const visiblePacks=packs.map((p,i)=>({p,i})).filter(({p})=>!p[4] || isAdminAccount());
  $("packs").innerHTML=visiblePacks.map(({p,i})=>`
  <div class="pack ${(p[0]==="VERITY"||p[0]==="FESTIVAL EXOTIC")?'admin-pack':''} ${selected?.i===i?'selected':''}" style="--pack-accent:${p[2]}" onclick="buy(${i})">
    ${(p[0]==="VERITY"||p[0]==="FESTIVAL EXOTIC")?'<div class="admin-crown">👑</div>':''}
@@ -539,21 +513,6 @@ function forcedBlookFor(u){
  return f ? catalogBlooks().find(x=>x.id===f.id) : null;
 }
 
-// EXP awarded when a pack is opened: +10 base EXP, plus the rarity bonus.
-function expBonusForRarity(r){
- const key=String(r||"").toLowerCase();
- if(key==="mythic" || key==="mythical") return 100;
- if(key==="chroma") return 50;
- if(key==="epic") return 20;
- if(key==="rare") return 10;
- if(key==="uncommon") return 5;
- if(key==="common") return 2;
- return 0;
-}
-function awardPackExp(r){
- account.xp=Number(account.xp||0)+10+expBonusForRarity(r);
-}
-
 function buy(i){
  const p=packs[i];
  if(!p || (p[4] && !account?.admin)) return alert("This Pack is available to admins only.");
@@ -575,9 +534,7 @@ function buy(i){
  else if(forced){ r=forced.rarity;b=forced.item; }
  else{ r=rarity();b=sets[i][rarityIndex(r)]; }
  const rec={id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),pack:packs[i][0],item:b,rarity:r};
- account.inventory.push(rec);
- awardPackExp(r);
- selected={i,rec};save();syncUsersWithServer(false).then(()=>{update();});showResult();
+ account.inventory.push(rec);selected={i,rec};save();syncUsersWithServer(false).then(()=>{update();});showResult();
  if(r==="Mythic"||r==="Mythical"||r==="Chroma"||r==="Intrustdent")globalAnnouncement(account.displayName,b,r,packs[i][0]);
 }
 
@@ -613,13 +570,22 @@ function renderBotLog(){
 }
 
 
-function requireAdmin(){if(!account||!account.admin){alert("You do not have admin permission.");return false}return true}
+function isAdminAccount(a=account){ return !!a && (a.admin===true || String(a.role||"").toLowerCase()==="admin"); }
+function isPartnerAccount(a=account){ return !!a && String(a.role||"").toLowerCase()==="partner" && !isAdminAccount(a); }
+function isStaffAccount(a=account){ return isAdminAccount(a) || isPartnerAccount(a); }
+function normalizeRole(a){ if(!a) return a; if(a.admin===true) a.role="admin"; else if(!["user","partner","admin"].includes(String(a.role||"").toLowerCase())) a.role="user"; return a; }
+function requireAdmin(){if(!isAdminAccount()){alert("You do not have admin permission.");return false}return true}
+function requireStaff(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
 function refreshAdmin(){
- if(!account?.admin)return;
+ if(!isStaffAccount())return;
+ const fullAdmin=isAdminAccount();
+ document.querySelectorAll(".admin-full-only").forEach(el=>el.classList.toggle("hidden",!fullAdmin));
+ const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/ESP.";
  const names=Object.keys(users);
  const opts=names.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
  $("adminPlayer").innerHTML=opts;
  $("adminPlayerMod").innerHTML=opts;
+ if($("adminRolePlayer")) $("adminRolePlayer").innerHTML=opts;
  $("adminPlayerDelete").innerHTML=opts;
  $("adminGivePlayer").innerHTML=opts;
  $("adminForcePlayer").innerHTML=opts;
@@ -681,14 +647,14 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
 if($("adminCoinsInf")) $("adminCoinsInf").onchange=()=>{ const inf=$("adminCoinsInf").checked; $("adminCoins").disabled=inf; if(inf) $("adminCoins").value=""; };
 if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTokensInf").checked; $("adminTokens").disabled=inf; if(inf) $("adminTokens").value=""; };
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
- if(!requireAdmin())return;
+ if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
  const infiniteCoins=!!$("adminCoinsInf")?.checked;
  const infiniteTokens=!!$("adminTokensInf")?.checked;
  const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
  if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
- if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞ Infinite ESP.");
- a.coins=infiniteCoins?Infinity:Math.floor(c);a.xp=infiniteTokens?Infinity:Math.floor(t);saveUsers();
+ if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid ESP amount or enable ∞ Infinite ESP.");
+ a.coins=infiniteCoins?Infinity:Math.floor(c);a.tokens=infiniteTokens?Infinity:Math.floor(t);saveUsers();
  if(u===current)account=a;
  renderAll();refreshAdmin();alert("Updated "+u);
 };
@@ -707,13 +673,15 @@ if($("adminBan")) $("adminBan").onclick=()=>{
  }
 };
 if($("adminMute")) $("adminMute").onclick=()=>{
- if(!requireAdmin())return;
+ if(!requireStaff())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
  users[u].muted=!users[u].muted;
  saveUsers();refreshAdmin();
 };
 
+if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
+if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
  if(!requireAdmin())return;
@@ -869,7 +837,7 @@ function renderAll(){
    list.push(x);
    ownedByCatalog.set(key,list);
  });
- $("blooksContent").innerHTML = packs.filter(p=>!p[4] || account.admin).map((p)=>{
+ $("blooksContent").innerHTML = packs.filter(p=>!p[4] || isAdminAccount()).map((p)=>{
    const pi=packs.indexOf(p);
    const row = sets[pi] || [];
    const ownedInPack = account.inventory.filter(x=>x.pack===p[0]).length;
@@ -1040,7 +1008,7 @@ function renderViewedStats(name){
 }
 
 document.querySelectorAll(".nav").forEach(btn=>btn.onclick=()=>{
- if(btn.dataset.page==="admin"&&!account.admin)return alert("You do not have admin permission.");
+ if(btn.dataset.page==="admin"&&!isStaffAccount())return alert("You do not have Admin/Partner permission.");
  document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  $(btn.dataset.page+"Page").classList.add("active");renderAll();
@@ -1142,7 +1110,6 @@ window.blooketstudioAdminBackup = {
       admin: true,
       coins: Number(u.coins || 0),
       tokens: Number(u.tokens || 0),
-      xp: Number(u.xp || 0),
       inventory: Array.isArray(u.inventory) ? u.inventory : [],
       avatar: u.avatar || null,
       muted: false,

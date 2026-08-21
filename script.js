@@ -688,7 +688,22 @@ if($("adminMute")) $("adminMute").onclick=()=>{
 };
 
 if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
-if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
+if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{
+  if(!requireAdmin())return;
+  const u=$("adminRolePlayer").value, role=String($("adminRoleSelect").value||"user").toLowerCase();
+  if(!u||!users[u])return alert("Select an account.");
+  if(!["admin","partner","user"].includes(role))return alert("Invalid role.");
+  if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin.");
+  const a=users[u];
+  a.role=role;
+  a.admin=(role==="admin");
+  a.partner=(role==="partner");
+  a.updatedAt=Date.now();
+  saveUsers();
+  refreshAdmin();
+  if(u===current){ account=a; update(); }
+  alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`);
+};
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
  if(!requireAdmin())return;

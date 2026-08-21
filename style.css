@@ -451,9 +451,9 @@ body:after{display:none}
 .landing-screen{position:fixed;inset:0;z-index:9999;background:#0a0d25 url("assets/brooket-landing.png") center/cover no-repeat;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .landing-screen.hidden{display:none}
 .landing-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(5,8,30,.18),rgba(75,0,110,.12),rgba(0,120,255,.12));pointer-events:none}
-.landing-actions{position:absolute;top:34px;right:34px;display:flex;gap:18px;z-index:2}
-.landing-btn{border:0;border-radius:8px;padding:12px 34px;font-size:26px;color:#fff;background:rgba(20,20,25,.88);box-shadow:0 0 20px rgba(255,255,255,.12);cursor:pointer}
-.landing-btn:hover{transform:translateY(-1px);box-shadow:0 0 28px rgba(255,255,255,.28)}
+.landing-actions{position:absolute;top:12px;right:3.5%;display:flex;gap:55px;z-index:3}
+.landing-btn{border:0;border-radius:8px;width:185px;height:70px;padding:0;font-size:0;color:transparent;background:transparent;box-shadow:none;cursor:pointer}
+.landing-btn:hover{transform:none;background:rgba(255,255,255,.02);box-shadow:none}
 .landing-credit{position:absolute;left:5%;top:56%;z-index:2;color:#fff;font-size:23px;text-shadow:0 2px 12px #000}
 .landing-copy{position:absolute;left:10px;bottom:8px;color:#fff;font-size:12px;z-index:2;text-shadow:0 1px 5px #000}
 @media(max-width:700px){.landing-actions{top:18px;right:18px;gap:8px}.landing-btn{font-size:18px;padding:10px 18px}.landing-credit{left:5%;top:60%;font-size:16px}}

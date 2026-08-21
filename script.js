@@ -405,6 +405,32 @@ function enter(u){
 }
 setAuthMode(false);
 
+// Reliable Login / Sign Up handlers.
+// Bind after the auth controls exist, and also expose them for inline HTML handlers.
+function bindAuthControls(){
+  const authBtn = $("authBtn");
+  const switchAuth = $("switchAuth");
+  const authPass = $("authPass");
+  const authPass2 = $("authPass2");
+  if(authBtn){
+    authBtn.type = "button";
+    authBtn.onclick = (e)=>{ e?.preventDefault?.(); Promise.resolve(auth()).catch(err=>{ console.error(err); const m=$("authMsg"); if(m)m.textContent="Unable to log in right now."; }); };
+  }
+  if(switchAuth){
+    switchAuth.type = "button";
+    switchAuth.onclick = (e)=>{ e?.preventDefault?.(); setAuthMode(!window.__registerMode); };
+  }
+  if(authPass){
+    authPass.onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); authBtn?.click(); } };
+  }
+  if(authPass2){
+    authPass2.onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); authBtn?.click(); } };
+  }
+}
+bindAuthControls();
+window.auth = auth;
+window.setAuthMode = setAuthMode;
+
 function update(){
  $("coins").textContent=account.coins.toLocaleString();
  $("tokens").textContent=(account.tokens||0).toLocaleString();

@@ -45,15 +45,15 @@ function connectRealtimeChat(){
         const data=JSON.parse(ev.data);
         if(data.type === "chat:init"){
           localStorage.setItem("pm_chat",JSON.stringify(data.messages||[]));
-          renderChat();
+          renderChat(); renderCredits();
         } else if(data.type === "presence:list"){
           onlineRealtimePlayers = Array.isArray(data.players) ? data.players : [];
-          renderChat();
+          renderChat(); renderCredits();
         } else if(data.type === "chat:new"){
           const msgs=JSON.parse(localStorage.getItem("pm_chat")||"[]");
           if(!msgs.some(x=>x.id===data.message.id)) msgs.push(data.message);
           localStorage.setItem("pm_chat",JSON.stringify(msgs.slice(-100)));
-          renderChat();
+          renderChat(); renderCredits();
         }
       } catch {}
     };
@@ -184,6 +184,7 @@ async function loadServerUsers(){
       mergedChanged=true;
     }
 
+    for(const a of Object.values(users||{})){ normalizeRole(a); if(String(a.role||"").toLowerCase()==="admin") a.admin=true; if(String(a.role||"").toLowerCase()==="partner") a.admin=false; }
     localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
     lastSyncedUsers=cloneUsers(users);
 
@@ -268,6 +269,7 @@ function startAccountSync(){
       const remoteUsers=data?.users;
       if(!remoteUsers || typeof remoteUsers!=="object" || Array.isArray(remoteUsers))return;
       const changed=mergeRemoteUsers(remoteUsers);
+      for(const a of Object.values(users||{})){ normalizeRole(a); if(String(a.role||"").toLowerCase()==="admin") a.admin=true; if(String(a.role||"").toLowerCase()==="partner") a.admin=false; }
       if(changed){
         localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
         lastSyncedUsers=cloneUsers(users);
@@ -734,9 +736,10 @@ if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{
  const u=$("adminRolePlayer").value, role=String($("adminRoleSelect").value||"user").toLowerCase();
  if(!u||!users[u])return alert("Select an account.");
  if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin.");
- const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); users[u]=a; saveUsers();
+ const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); normalizeRole(a); users[u]=a; localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v==="__INF__"?"__INF__":v)); broadcast("users"); saveUsers();
  if(u===current){account=a;update();renderAll();}
- refreshAdmin();
+ refreshAdmin(); renderCredits();
+ Promise.resolve(serverUsersReady).then(()=>pushServerUsers()).catch(()=>{});
  alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`);
 };
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
@@ -937,7 +940,7 @@ function renderAll(){
 
 
  renderTrade();
- renderChat();if(account.admin)refreshAdmin();
+ renderChat(); renderCredits(); if(account.admin)refreshAdmin();
 }
 
 function setAvatar(id){
@@ -1010,6 +1013,24 @@ function cancelTrade(id){
  if(!t)return; t.status="cancelled";saveTrades(trades);renderTrade();
 }
 
+function ensureCreditsAndRoleStyles(){
+  if(document.getElementById("brooketCreditsStyles")) return;
+  const st=document.createElement("style"); st.id="brooketCreditsStyles";
+  st.textContent=`.brooket-credits-panel{position:fixed;right:18px;bottom:18px;z-index:9998;width:250px;max-height:280px;overflow:auto;padding:12px 14px;border-radius:14px;background:rgba(12,14,24,.94);box-shadow:0 8px 30px rgba(0,0,0,.35);color:#fff;font-family:inherit;border:1px solid rgba(255,255,255,.14)}.brooket-credits-title{font-weight:800;font-size:16px;margin-bottom:8px}.brooket-credit-row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;font-size:13px}.brooket-role-badge{font-weight:900;display:inline-block;margin-left:5px}.brooket-admin-badge,.brooket-partner-badge,.admin-chat-badge,.partner-chat-badge{background:linear-gradient(90deg,#ff2d55,#ff9500,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff2d55);background-size:300% 100%;animation:brooketRainbow 2s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 10px rgba(255,255,255,.18)}.partner-chat-badge,.brooket-partner-badge{position:relative}.partner-chat-badge::after,.brooket-partner-badge::after{content:"";position:absolute;inset:-4px -6px;border:2px solid transparent;border-radius:999px;background:linear-gradient(90deg,#ff2d55,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff2d55) border-box;-webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:brooketRainbow 2s linear infinite;pointer-events:none}@keyframes brooketRainbow{to{background-position:300% 0}}`;
+  document.head.appendChild(st);
+}
+function renderCredits(){
+  ensureCreditsAndRoleStyles(); let panel=document.getElementById("brooketCreditsPanel");
+  if(!panel){panel=document.createElement("div");panel.id="brooketCreditsPanel";panel.className="brooket-credits-panel";document.body.appendChild(panel);}
+  const admins=[],partners=[]; for(const [u,a] of Object.entries(users||{})){if(isAdminAccount(a))admins.push(u);else if(isPartnerAccount(a))partners.push(u);}
+  panel.innerHTML=`<div class="brooket-credits-title">Credits</div><div class="brooket-credit-row"><span>👑 Admin</span><span>${admins.length?admins.map(u=>`<span class="brooket-role-badge brooket-admin-badge">${escapeHtml(u)}</span>`).join(", "):"None"}</span></div><div class="brooket-credit-row"><span>🤝 Partner</span><span>${partners.length?partners.map(u=>`<span class="brooket-role-badge brooket-partner-badge">${escapeHtml(u)}</span>`).join(", "):"None"}</span></div>`;
+}
+function roleBadgeForChat(user,bot=false){
+  if(bot)return ""; const key=Object.keys(users||{}).find(k=>k.toLowerCase()===String(user||"").toLowerCase()); const a=key?users[key]:null;
+  if(String(user||"").toLowerCase()==="blooketstudio"||isAdminAccount(a))return `<span class="admin-chat-badge" title="Administrator">[admin]</span>`;
+  if(isPartnerAccount(a))return `<span class="partner-chat-badge" title="Partner">[partner]</span>`; return "";
+}
+
 function renderChat(){
  const msgs=JSON.parse(localStorage.getItem("pm_chat")||"[]");
  const players = onlineRealtimePlayers.length ? onlineRealtimePlayers : (current ? [{user:current,avatar:getAvatar(current),rarity:""}] : []);
@@ -1021,9 +1042,9 @@ function renderChat(){
    const bot=!!m.bot || m.user==="🤖 PackBot";
    const chatUserKey = Object.keys(users).find(k => k.toLowerCase() === String(m.user||"").toLowerCase());
    const chatUser = chatUserKey ? users[chatUserKey] : null;
-   const isAdmin = !bot && (String(m.user||"").toLowerCase() === "blooketstudio" || !!chatUser?.admin);
+   const isAdmin = !bot && (String(m.user||"").toLowerCase() === "blooketstudio" || isAdminAccount(chatUser));
    const avatar = m.avatar ? `<span class="chat-avatar">${escapeHtml(m.avatar)}</span>` : (bot ? "🤖" : getAvatarVisual(m.user));
-   const adminBadge = isAdmin ? `<span class="admin-chat-badge" title="Administrator">[admin]</span>` : "";
+   const adminBadge = roleBadgeForChat(m.user,bot);
    return `<div class="chat-message ${m.user===current?"mine":""} ${bot?"bot-chat":""}">
      <div class="sender">${avatar} ${escapeHtml(m.user)} ${adminBadge}</div>
      <div>${escapeHtml(m.text)}</div><div class="time">${m.time}</div>

@@ -333,7 +333,12 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- await serverUsersReady;
+  try{
+    await Promise.race([
+      Promise.resolve(serverUsersReady),
+      new Promise(function(resolve){setTimeout(resolve,5000);})
+    ]);
+  }catch(e){}
  const u=$("authUser").value.trim(),p=$("authPass").value;
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
@@ -1367,4 +1372,57 @@ document.addEventListener('click',e=>{
     document.addEventListener("DOMContentLoaded",wireBrooketAuth,{once:true});
   else wireBrooketAuth();
   window.addEventListener("load",wireBrooketAuth,{once:true});
+})();
+
+
+/* FINAL Brooket Landing Auth Fix
+   Supports both landingLogin/landingRegister and common login/signup IDs.
+   Uses existing auth/setAuthMode functions instead of replacing them. */
+(function(){
+  function openBrooketAuth(register){
+    try{
+      var screen=document.getElementById("authScreen") ||
+                  document.querySelector(".auth-screen") ||
+                  document.querySelector("[data-auth-screen]");
+      if(screen){
+        screen.classList.remove("hidden");
+        screen.style.display="";
+      }
+      if(typeof setAuthMode==="function") setAuthMode(!!register);
+      var user=document.getElementById("authUser") ||
+                 document.querySelector('input[name="username"]');
+      if(user) setTimeout(function(){user.focus();},0);
+    }catch(e){ console.error("Brooket auth open error",e); }
+  }
+  function wire(){
+    var loginSelectors=[
+      "#landingLogin","#loginBtn","#loginButton",
+      '[data-action="login"]','[data-auth="login"]'
+    ];
+    var signupSelectors=[
+      "#landingRegister","#signupBtn","#signUpBtn","#signupButton",
+      '[data-action="signup"]','[data-auth="signup"]'
+    ];
+    function bind(list,register){
+      list.forEach(function(sel){
+        document.querySelectorAll(sel).forEach(function(el){
+          if(el.__brooketAuthBound) return;
+          el.__brooketAuthBound=true;
+          el.type="button";
+          el.addEventListener("click",function(ev){
+            ev.preventDefault();
+            ev.stopPropagation();
+            openBrooketAuth(register);
+          },true);
+        });
+      });
+    }
+    bind(loginSelectors,false);
+    bind(signupSelectors,true);
+  }
+  if(document.readyState==="loading")
+    document.addEventListener("DOMContentLoaded",wire);
+  else wire();
+  window.addEventListener("load",wire);
+  new MutationObserver(wire).observe(document.documentElement,{childList:true,subtree:true});
 })();

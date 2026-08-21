@@ -7,7 +7,16 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="authScreen" class="auth-screen">
+<div id="landingScreen" class="landing-screen">
+  <div class="landing-overlay"></div>
+  <div class="landing-actions">
+    <button id="landingLogin" class="landing-btn">Login</button>
+    <button id="landingRegister" class="landing-btn">Register</button>
+  </div>
+  <div class="landing-credit">created by Blooketstudio</div>
+  <div class="landing-copy">© 2026 Brooket</div>
+</div>
+<div id="authScreen" class="auth-screen hidden">
   <div class="auth-card">
     <div class="logo">BROOK<span>ET</span></div>
     <h1 id="authTitle">Log In</h1>
@@ -88,7 +97,7 @@
 <section id="adminPage" class="page">
 <div class="panel">
 <h1>🛡️ Admin Panel</h1>
-<p id="adminPanelNotice" class="muted">Admin and Partner permissions are managed here.</p>
+<p class="muted">Only admin accounts can see this area.</p>
 <div class="admin-grid">
 <div class="admin-card"><h3>💰 Edit Balance</h3><select id="adminPlayer"></select><input id="adminCoins" type="number" min="0" placeholder="New Token amount"><label class="inf-toggle"><input id="adminCoinsInf" type="checkbox"> ∞ Infinite Tokens</label><input id="adminTokens" type="number" min="0" placeholder="New ESP amount"><label class="inf-toggle"><input id="adminTokensInf" type="checkbox"> ∞ Infinite ESP</label><button id="adminApplyBalance" class="small">Apply</button></div>
 <div class="admin-card"><h3>🔨 Ban / Mute</h3><select id="adminPlayerMod"></select><button id="adminBan" class="danger">Ban / Unban</button><button id="adminMute" class="small">Mute / Unmute</button><div id="adminModStatus" class="muted"></div></div>
@@ -111,8 +120,8 @@
 <button id="adminForceClear" class="danger">✕ Clear</button>
 <div id="adminForceStatus" class="muted"></div>
 </div>
-<div class="admin-card admin-full-only"><h3>🗑️ Delete Account</h3><select id="adminPlayerDelete"></select><p class="muted">Permanently delete the player's account and Blook data.</p><button id="adminDelete" class="danger">🗑️ DELETE ACCOUNT</button></div>
-<div class="admin-card admin-full-only" id="adminRoleCard"><h3>👑 Manage Roles</h3><p class="muted">Only Admin can promote or demote accounts.</p><select id="adminRolePlayer"></select><select id="adminRoleSelect"><option value="user">👤 User</option><option value="partner">🤝 Partner</option><option value="admin">👑 Admin</option></select><button id="adminRoleApply" class="small">Apply Role</button><div id="adminRoleStatus" class="muted"></div></div><div class="admin-card"><h3>👥 Players</h3><div id="adminPlayers"></div></div>
+<div class="admin-card"><h3>🗑️ Delete Account</h3><select id="adminPlayerDelete"></select><p class="muted">Permanently delete the player's account and Blook data.</p><button id="adminDelete" class="danger">🗑️ DELETE ACCOUNT</button></div>
+<div class="admin-card"><h3>👥 Players</h3><div id="adminPlayers"></div></div>
 </div>
 </div>
 </section><section id="settingsPage" class="page">

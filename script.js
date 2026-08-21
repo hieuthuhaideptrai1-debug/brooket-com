@@ -6,9 +6,6 @@ async function renderSharedLeaderboard(){
   if(!el)return;
   let board=[];
   try{
-    // Flush this browser's genuine local changes to the root first, then
-    // read the canonical leaderboard. This makes the leaderboard converge
-    // immediately instead of waiting for the 3-second background timer.
     if(serverAvailable) await pushServerUsers();
     const r=await fetch(`${accountApiBase}/api/leaderboard`,{cache:"no-store"});
     if(!r.ok)throw new Error("leaderboard request failed");
@@ -16,11 +13,10 @@ async function renderSharedLeaderboard(){
     board=Array.isArray(d.leaderboard)?d.leaderboard:[];
   }catch{
     board=Object.entries(users||{}).map(([username,u])=>({
-      username, opened:Number(u.opened||0), coins:Number(u.coins||0),
-      xp:Number(u.xp||0), score:Number(u.score||u.xp||u.opened||0)
-    })).sort((a,b)=>b.score-a.score||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
+      username, coins:Number(u.coins||0), opened:Number(u.opened||0)
+    })).sort((a,b)=>b.coins-a.coins||a.username.localeCompare(b.username));
   }
-  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>${Number(x.opened||0)} packs</b></div>`).join("");
+  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>🪙 ${Number(x.coins||0).toLocaleString()} Tokens</b></div>`).join("");
 }
 
 
@@ -45,15 +41,15 @@ function connectRealtimeChat(){
         const data=JSON.parse(ev.data);
         if(data.type === "chat:init"){
           localStorage.setItem("pm_chat",JSON.stringify(data.messages||[]));
-          renderChat(); renderCredits();
+          renderChat();
         } else if(data.type === "presence:list"){
           onlineRealtimePlayers = Array.isArray(data.players) ? data.players : [];
-          renderChat(); renderCredits();
+          renderChat();
         } else if(data.type === "chat:new"){
           const msgs=JSON.parse(localStorage.getItem("pm_chat")||"[]");
           if(!msgs.some(x=>x.id===data.message.id)) msgs.push(data.message);
           localStorage.setItem("pm_chat",JSON.stringify(msgs.slice(-100)));
-          renderChat(); renderCredits();
+          renderChat();
         }
       } catch {}
     };
@@ -167,10 +163,8 @@ async function loadServerUsers(){
     if(adminKey){
       const admin=users[adminKey];
       admin.admin=true;
-      admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
-      admin.banned=false; admin.muted=false;
       admin.coins=Number(admin.coins ?? 865);
       admin.tokens=Number(admin.tokens ?? 100);
       admin.opened=Number(admin.opened ?? 0);
@@ -184,7 +178,6 @@ async function loadServerUsers(){
       mergedChanged=true;
     }
 
-    for(const a of Object.values(users||{})){ normalizeRole(a); if(String(a.role||"").toLowerCase()==="admin") a.admin=true; if(String(a.role||"").toLowerCase()==="partner") a.admin=false; }
     localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
     lastSyncedUsers=cloneUsers(users);
 
@@ -269,7 +262,6 @@ function startAccountSync(){
       const remoteUsers=data?.users;
       if(!remoteUsers || typeof remoteUsers!=="object" || Array.isArray(remoteUsers))return;
       const changed=mergeRemoteUsers(remoteUsers);
-      for(const a of Object.values(users||{})){ normalizeRole(a); if(String(a.role||"").toLowerCase()==="admin") a.admin=true; if(String(a.role||"").toLowerCase()==="partner") a.admin=false; }
       if(changed){
         localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
         lastSyncedUsers=cloneUsers(users);
@@ -299,7 +291,7 @@ function saveUsers(){
   if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
 }
 function save(){ if(account?.inventory) account.inventory=account.inventory.map(normalizeBlookRarity); users[current]=account;saveUsers()}
-function makeAccount(u,p){return{password:p,displayName:u,coins:0,tokens:0,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
+function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
 const BLOOK_IMAGE_MAP=new Map(sets.flatMap(r=>r).map((item,i)=>[item,"assets/blooks/blook_"+i+".svg"]));
 /* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */
 const CUSTOM_BLOOK_IMAGES={"Festival Chroma":"assets/blooks/festival-chroma.png","Festival Angelic":"assets/blooks/festival-mythical.png","Festival Untrusted":"assets/blooks/festival-untrusted.png"};
@@ -336,20 +328,15 @@ function setAuthMode(reg){
  $("authMsg").textContent="";
 }
 async function auth(){
- // Login/Sign Up must never wait for the shared server. The server sync runs in the background.
+ await serverUsersReady;
  const u=$("authUser").value.trim(),p=$("authPass").value;
  if(!u||!p)return $("authMsg").textContent="Please fill in all fields.";
  if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return $("authMsg").textContent="Username must be 3–20 characters.";
  if(window.__registerMode){
   if(p.length<4)return $("authMsg").textContent="Password must be at least 4 characters.";
   if($("authPass2").value!==p)return $("authMsg").textContent="Passwords do not match.";
-  const existingKey=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
-  if(existingKey)return $("authMsg").textContent="That username already exists.";
-  users[u]=makeAccount(u,p);
-  saveUsers();
-  enter(u);
-  // Push the new account in the background; never block the UI.
-  Promise.resolve(serverUsersReady).then(()=>pushServerUsers()).catch(()=>{});
+  if(users[u])return $("authMsg").textContent="That username already exists.";
+  users[u]=makeAccount(u,p);saveUsers();enter(u);
  }else{
   const key = Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
   const loginKey = key || u;
@@ -365,15 +352,8 @@ async function auth(){
     return $("authMsg").textContent="Incorrect username or password.";
   }
   enter(loginKey);
-  // Refresh shared data in the background after login.
-  Promise.resolve(serverUsersReady).then(()=>{
-    const key=Object.keys(users).find(k=>String(k).toLowerCase()===u.toLowerCase());
-    if(key && key!==current){ current=key; account=users[key]; normalizeRole(account); update(); renderAll(); }
-  }).catch(()=>{});
  }
 }
-window.auth=auth;
-window.setAuthMode=setAuthMode;
 function festivalRarityForItem(item){
  const map={"Festival Untrusted":"Untrusted","Festival Angelic":"Mythical","Festival Chroma":"Chroma"};
  return map[item]||null;
@@ -388,8 +368,7 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- if(String(u).toLowerCase()==="blooketstudio"){ account.banned=false; account.admin=true; account.role="admin"; }
- account.coins ??= 0; account.tokens ??= 0; account.avatar ??= null; account.admin ??= false; normalizeRole(account); if(String(account.role||"").toLowerCase()==="admin") account.admin=true; if(String(account.role||"").toLowerCase()==="partner") account.admin=false; account.banned ??= false; account.muted ??= false;
+ account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -407,43 +386,28 @@ function enter(u){
 }
 setAuthMode(false);
 
-// Reliable Login / Sign Up handlers.
-// Bind after the auth controls exist, and also expose them for inline HTML handlers.
-function bindAuthControls(){
-  const authBtn = $("authBtn");
-  const switchAuth = $("switchAuth");
-  const authPass = $("authPass");
-  const authPass2 = $("authPass2");
-  if(authBtn){
-    authBtn.type = "button";
-    authBtn.onclick = (e)=>{ e?.preventDefault?.(); Promise.resolve(auth()).catch(err=>{ console.error(err); const m=$("authMsg"); if(m)m.textContent="Unable to log in right now."; }); };
-  }
-  if(switchAuth){
-    switchAuth.type = "button";
-    switchAuth.onclick = (e)=>{ e?.preventDefault?.(); setAuthMode(!window.__registerMode); };
-  }
-  if(authPass){
-    authPass.onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); authBtn?.click(); } };
-  }
-  if(authPass2){
-    authPass2.onkeydown = (e)=>{ if(e.key==="Enter"){ e.preventDefault(); authBtn?.click(); } };
-  }
-}
-bindAuthControls();
-window.auth = auth;
-window.setAuthMode = setAuthMode;
+// Wire authentication controls to the existing auth() function.
+if ($("authBtn")) $("authBtn").addEventListener("click", auth);
+if ($("switchAuth")) $("switchAuth").addEventListener("click", () => setAuthMode(!window.__registerMode));
+if ($("authPass")) $("authPass").addEventListener("keydown", e => {
+  if (e.key === "Enter") auth();
+});
+if ($("authPass2")) $("authPass2").addEventListener("keydown", e => {
+  if (e.key === "Enter") auth();
+});
+
 
 function update(){
  $("coins").textContent=account.coins.toLocaleString();
  $("tokens").textContent=(account.tokens||0).toLocaleString();
  $("opened").textContent=account.opened;
- $("adminNav").classList.toggle("hidden",!isStaffAccount());
+ $("adminNav").classList.toggle("hidden",!account.admin);
  $("inventoryCount").textContent=account.inventory.length;
  $("playerName").innerHTML=`${getAvatarVisual(current)} <span>${escapeHtml(account.displayName)}</span>`;
 }
 
 function renderPacks(){
- const visiblePacks=packs.map((p,i)=>({p,i})).filter(({p})=>!p[4] || isAdminAccount());
+ const visiblePacks=packs.map((p,i)=>({p,i})).filter(({p})=>!p[4] || account?.admin);
  $("packs").innerHTML=visiblePacks.map(({p,i})=>`
  <div class="pack ${(p[0]==="VERITY"||p[0]==="FESTIVAL EXOTIC")?'admin-pack':''} ${selected?.i===i?'selected':''}" style="--pack-accent:${p[2]}" onclick="buy(${i})">
    ${(p[0]==="VERITY"||p[0]==="FESTIVAL EXOTIC")?'<div class="admin-crown">👑</div>':''}
@@ -612,22 +576,13 @@ function renderBotLog(){
 }
 
 
-function isAdminAccount(a=account){ return !!a && (a.admin===true || String(a.role||"").toLowerCase()==="admin"); }
-function isPartnerAccount(a=account){ return !!a && String(a.role||"").toLowerCase()==="partner" && !isAdminAccount(a); }
-function isStaffAccount(a=account){ return isAdminAccount(a) || isPartnerAccount(a); }
-function normalizeRole(a){ if(!a) return a; if(a.admin===true) a.role="admin"; else if(!["user","partner","admin"].includes(String(a.role||"").toLowerCase())) a.role="user"; return a; }
-function requireAdmin(){if(!isAdminAccount()){alert("You do not have admin permission.");return false}return true}
-function requireStaff(){if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return false}return true}
+function requireAdmin(){if(!account||!account.admin){alert("You do not have admin permission.");return false}return true}
 function refreshAdmin(){
- if(!isStaffAccount())return;
- const fullAdmin=isAdminAccount();
- document.querySelectorAll(".admin-full-only").forEach(el=>el.classList.toggle("hidden",!fullAdmin));
- const notice=$("adminPanelNotice"); if(notice) notice.textContent=fullAdmin ? "You have full Admin permissions." : "Partner permissions: you can mute/unmute players and edit Tokens/ESP.";
+ if(!account?.admin)return;
  const names=Object.keys(users);
  const opts=names.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
  $("adminPlayer").innerHTML=opts;
  $("adminPlayerMod").innerHTML=opts;
- if($("adminRolePlayer")) $("adminRolePlayer").innerHTML=opts;
  $("adminPlayerDelete").innerHTML=opts;
  $("adminGivePlayer").innerHTML=opts;
  $("adminForcePlayer").innerHTML=opts;
@@ -689,59 +644,39 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
 if($("adminCoinsInf")) $("adminCoinsInf").onchange=()=>{ const inf=$("adminCoinsInf").checked; $("adminCoins").disabled=inf; if(inf) $("adminCoins").value=""; };
 if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTokensInf").checked; $("adminTokens").disabled=inf; if(inf) $("adminTokens").value=""; };
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
- const staff=account;
- if(!isStaffAccount()){alert("You do not have Admin/Partner permission.");return;}
+ if(!requireAdmin())return;
  const u=selectedAdminUser(),a=users[u];
- if(!u||!a)return alert("Select an account.");
  const infiniteCoins=!!$("adminCoinsInf")?.checked;
  const infiniteTokens=!!$("adminTokensInf")?.checked;
  const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
- if(isPartnerAccount(staff)){
-   if(infiniteCoins||infiniteTokens)return alert("Partner can only edit Balance up to 10,000.");
-   if(!Number.isFinite(c)||c<0||c>10000)return alert("Partner Balance must be between 0 and 10,000.");
-   a.coins=Math.floor(c);
- }else{
-   if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Balance amount or enable ∞.");
-   if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞.");
-   a.coins=infiniteCoins?Infinity:Math.floor(c);
-   a.tokens=infiniteTokens?Infinity:Math.floor(t);
- }
- a.updatedAt=Date.now(); users[u]=a; saveUsers();
- if(u===current){account=a;renderAll();}
- refreshAdmin();
- alert("Updated "+u);
+ if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
+ if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid ESP amount or enable ∞ Infinite ESP.");
+ a.coins=infiniteCoins?Infinity:Math.floor(c);a.tokens=infiniteTokens?Infinity:Math.floor(t);saveUsers();
+ if(u===current)account=a;
+ renderAll();refreshAdmin();alert("Updated "+u);
 };
 if($("adminBan")) $("adminBan").onclick=()=>{
  if(!requireAdmin())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
- if(String(u).toLowerCase()==="blooketstudio")return alert("The main Blooketstudio account cannot be banned.");
  const willBan=!users[u].banned;
- if(willBan && !confirm("Are you sure you want to ban @"+u+"?"))return;
- if(!willBan && !confirm("Are you sure you want to unban @"+u+"?"))return;
- users[u].banned=willBan; users[u].updatedAt=Date.now(); saveUsers(); refreshAdmin();
- if(u===current && willBan){localStorage.removeItem("pm_current");alert("Account @"+u+" has been banned. You will be logged out.");location.reload();}
+ users[u].banned=willBan;
+ saveUsers();
+ refreshAdmin();
+ if(u===current && willBan){
+   localStorage.removeItem("pm_current");
+   alert("Account @" + u + " has been banned. You will be logged out.");
+   location.reload();
+ }
 };
 if($("adminMute")) $("adminMute").onclick=()=>{
- if(!requireStaff())return;
+ if(!requireAdmin())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
  users[u].muted=!users[u].muted;
  saveUsers();refreshAdmin();
 };
 
-if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
-if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{
- if(!requireAdmin())return;
- const u=$("adminRolePlayer").value, role=String($("adminRoleSelect").value||"user").toLowerCase();
- if(!u||!users[u])return alert("Select an account.");
- if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin.");
- const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); normalizeRole(a); users[u]=a; localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v==="__INF__"?"__INF__":v)); broadcast("users"); saveUsers();
- if(u===current){account=a;update();renderAll();}
- refreshAdmin(); renderCredits();
- Promise.resolve(serverUsersReady).then(()=>pushServerUsers()).catch(()=>{});
- alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`);
-};
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
  if(!requireAdmin())return;
@@ -897,7 +832,7 @@ function renderAll(){
    list.push(x);
    ownedByCatalog.set(key,list);
  });
- $("blooksContent").innerHTML = packs.filter(p=>!p[4] || isAdminAccount()).map((p)=>{
+ $("blooksContent").innerHTML = packs.filter(p=>!p[4] || account.admin).map((p)=>{
    const pi=packs.indexOf(p);
    const row = sets[pi] || [];
    const ownedInPack = account.inventory.filter(x=>x.pack===p[0]).length;
@@ -940,7 +875,7 @@ function renderAll(){
 
 
  renderTrade();
- renderChat(); renderCredits(); if(account.admin)refreshAdmin();
+ renderChat();if(account.admin)refreshAdmin();
 }
 
 function setAvatar(id){
@@ -1013,24 +948,6 @@ function cancelTrade(id){
  if(!t)return; t.status="cancelled";saveTrades(trades);renderTrade();
 }
 
-function ensureCreditsAndRoleStyles(){
-  if(document.getElementById("brooketCreditsStyles")) return;
-  const st=document.createElement("style"); st.id="brooketCreditsStyles";
-  st.textContent=`.brooket-credits-panel{position:fixed;right:18px;bottom:18px;z-index:9998;width:250px;max-height:280px;overflow:auto;padding:12px 14px;border-radius:14px;background:rgba(12,14,24,.94);box-shadow:0 8px 30px rgba(0,0,0,.35);color:#fff;font-family:inherit;border:1px solid rgba(255,255,255,.14)}.brooket-credits-title{font-weight:800;font-size:16px;margin-bottom:8px}.brooket-credit-row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;font-size:13px}.brooket-role-badge{font-weight:900;display:inline-block;margin-left:5px}.brooket-admin-badge,.brooket-partner-badge,.admin-chat-badge,.partner-chat-badge{background:linear-gradient(90deg,#ff2d55,#ff9500,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff2d55);background-size:300% 100%;animation:brooketRainbow 2s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 10px rgba(255,255,255,.18)}.partner-chat-badge,.brooket-partner-badge{position:relative}.partner-chat-badge::after,.brooket-partner-badge::after{content:"";position:absolute;inset:-4px -6px;border:2px solid transparent;border-radius:999px;background:linear-gradient(90deg,#ff2d55,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff2d55) border-box;-webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:brooketRainbow 2s linear infinite;pointer-events:none}@keyframes brooketRainbow{to{background-position:300% 0}}`;
-  document.head.appendChild(st);
-}
-function renderCredits(){
-  ensureCreditsAndRoleStyles(); let panel=document.getElementById("brooketCreditsPanel");
-  if(!panel){panel=document.createElement("div");panel.id="brooketCreditsPanel";panel.className="brooket-credits-panel";document.body.appendChild(panel);}
-  const admins=[],partners=[]; for(const [u,a] of Object.entries(users||{})){if(isAdminAccount(a))admins.push(u);else if(isPartnerAccount(a))partners.push(u);}
-  panel.innerHTML=`<div class="brooket-credits-title">Credits</div><div class="brooket-credit-row"><span>👑 Admin</span><span>${admins.length?admins.map(u=>`<span class="brooket-role-badge brooket-admin-badge">${escapeHtml(u)}</span>`).join(", "):"None"}</span></div><div class="brooket-credit-row"><span>🤝 Partner</span><span>${partners.length?partners.map(u=>`<span class="brooket-role-badge brooket-partner-badge">${escapeHtml(u)}</span>`).join(", "):"None"}</span></div>`;
-}
-function roleBadgeForChat(user,bot=false){
-  if(bot)return ""; const key=Object.keys(users||{}).find(k=>k.toLowerCase()===String(user||"").toLowerCase()); const a=key?users[key]:null;
-  if(String(user||"").toLowerCase()==="blooketstudio"||isAdminAccount(a))return `<span class="admin-chat-badge" title="Administrator">[admin]</span>`;
-  if(isPartnerAccount(a))return `<span class="partner-chat-badge" title="Partner">[partner]</span>`; return "";
-}
-
 function renderChat(){
  const msgs=JSON.parse(localStorage.getItem("pm_chat")||"[]");
  const players = onlineRealtimePlayers.length ? onlineRealtimePlayers : (current ? [{user:current,avatar:getAvatar(current),rarity:""}] : []);
@@ -1042,9 +959,9 @@ function renderChat(){
    const bot=!!m.bot || m.user==="🤖 PackBot";
    const chatUserKey = Object.keys(users).find(k => k.toLowerCase() === String(m.user||"").toLowerCase());
    const chatUser = chatUserKey ? users[chatUserKey] : null;
-   const isAdmin = !bot && (String(m.user||"").toLowerCase() === "blooketstudio" || isAdminAccount(chatUser));
+   const isAdmin = !bot && (String(m.user||"").toLowerCase() === "blooketstudio" || !!chatUser?.admin);
    const avatar = m.avatar ? `<span class="chat-avatar">${escapeHtml(m.avatar)}</span>` : (bot ? "🤖" : getAvatarVisual(m.user));
-   const adminBadge = roleBadgeForChat(m.user,bot);
+   const adminBadge = isAdmin ? `<span class="admin-chat-badge" title="Administrator">[admin]</span>` : "";
    return `<div class="chat-message ${m.user===current?"mine":""} ${bot?"bot-chat":""}">
      <div class="sender">${avatar} ${escapeHtml(m.user)} ${adminBadge}</div>
      <div>${escapeHtml(m.text)}</div><div class="time">${m.time}</div>
@@ -1086,7 +1003,7 @@ function renderViewedStats(name){
 }
 
 document.querySelectorAll(".nav").forEach(btn=>btn.onclick=()=>{
- if(btn.dataset.page==="admin"&&!isStaffAccount())return alert("You do not have Admin/Partner permission.");
+ if(btn.dataset.page==="admin"&&!account.admin)return alert("You do not have admin permission.");
  document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  $(btn.dataset.page+"Page").classList.add("active");renderAll();
@@ -1388,3 +1305,21 @@ document.addEventListener('click',e=>{
   const li=(bazaarListings||[])[idx];
   if(li && String(li.seller)===String(current)) bazaarRecall(li.id);
 }); // bazaar-own-card-recall
+
+
+// Landing screen navigation
+(function(){
+  const landing=document.getElementById('landingScreen');
+  const auth=document.getElementById('authScreen');
+  const login=document.getElementById('landingLogin');
+  const register=document.getElementById('landingRegister');
+  function openAuth(registerMode){
+    landing?.classList.add('hidden');
+    auth?.classList.remove('hidden');
+    if(registerMode){
+      try{document.getElementById('switchAuth')?.click();}catch{}
+    }
+  }
+  login?.addEventListener('click',()=>openAuth(false));
+  register?.addEventListener('click',()=>openAuth(true));
+})();

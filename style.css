@@ -447,4 +447,13 @@ body:after{display:none}
 @keyframes masterRarityPulse{from{transform:scale(1);box-shadow:0 0 14px #ff4fd8,0 0 28px #36dfff}to{transform:scale(1.035);box-shadow:0 0 23px #ffee00,0 0 42px #9b45ff}}
 @keyframes masterAvatarFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 
-.role-admin,.role-partner{font-weight:800;}
+/* Brooket rainbow landing screen */
+.landing-screen{position:fixed;inset:0;z-index:9999;background:#0a0d25 url("assets/brooket-landing.png") center/cover no-repeat;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.landing-screen.hidden{display:none}
+.landing-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(5,8,30,.18),rgba(75,0,110,.12),rgba(0,120,255,.12));pointer-events:none}
+.landing-actions{position:absolute;top:34px;right:34px;display:flex;gap:18px;z-index:2}
+.landing-btn{border:0;border-radius:8px;padding:12px 34px;font-size:26px;color:#fff;background:rgba(20,20,25,.88);box-shadow:0 0 20px rgba(255,255,255,.12);cursor:pointer}
+.landing-btn:hover{transform:translateY(-1px);box-shadow:0 0 28px rgba(255,255,255,.28)}
+.landing-credit{position:absolute;left:5%;top:56%;z-index:2;color:#fff;font-size:23px;text-shadow:0 2px 12px #000}
+.landing-copy{position:absolute;left:10px;bottom:8px;color:#fff;font-size:12px;z-index:2;text-shadow:0 1px 5px #000}
+@media(max-width:700px){.landing-actions{top:18px;right:18px;gap:8px}.landing-btn{font-size:18px;padding:10px 18px}.landing-credit{left:5%;top:60%;font-size:16px}}

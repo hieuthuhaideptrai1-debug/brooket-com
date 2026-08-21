@@ -10,10 +10,7 @@ const CHAT_FILE = path.join(ROOT, 'chat-data.json');
 const USERS_FILE = path.join(ROOT, 'users-data.json');
 const USERS_BACKUP_FILE = path.join(ROOT, 'users-data.backup.json');
 const BAZAAR_FILE = path.join(ROOT, 'bazaar-data.json');
-const ADMIN_CATALOG_FILE = path.join(ROOT, 'admin-catalog.json');
 let users = {};
-let adminCatalog = [];
-try { adminCatalog = JSON.parse(fs.readFileSync(ADMIN_CATALOG_FILE, 'utf8')); if (!Array.isArray(adminCatalog)) adminCatalog=[]; } catch {}
 let bazaar = {listings:[]};
 try { bazaar = JSON.parse(fs.readFileSync(BAZAAR_FILE, 'utf8')); if (!bazaar || !Array.isArray(bazaar.listings)) bazaar={listings:[]}; } catch {}
 function saveBazaar(){ try { fs.writeFileSync(BAZAAR_FILE, JSON.stringify(bazaar, null, 2)); } catch(e) { console.error('bazaar save failed', e.message); } }
@@ -45,31 +42,15 @@ function ensureSharedAdminAccount(){
     users[key].displayName = users[key].displayName || key;
     users[key].coins = Number(users[key].coins ?? 865);
     users[key].tokens = Number(users[key].tokens ?? 100);
-    users[key].opened = Number(users[key].opened ?? 0);     users[key].xp = Number(users[key].xp ?? 0);
+    users[key].opened = Number(users[key].opened ?? 0);
     users[key].inventory = Array.isArray(users[key].inventory) ? users[key].inventory : [];
-    // Preserve all existing Admin data, while guaranteeing at least one copy
-    // of every catalog Blook. Existing duplicates/extra items are untouched.
-    const existing = new Set(users[key].inventory.map(x => `${x?.pack || ''}\u0000${x?.item || ''}`));
-    for (const b of adminCatalog) {
-      const sig = `${b.pack}\u0000${b.item}`;
-      if (existing.has(sig)) continue;
-      users[key].inventory.push({
-        id: `blook_admin_${b.pi}_${b.ri}`,
-        pack: b.pack,
-        item: b.item,
-        rarity: b.rarity,
-        pi: b.pi,
-        ri: b.ri
-      });
-      existing.add(sig);
-    }
     changed = before !== JSON.stringify(users[key]);
     if(changed){ try { fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); fs.writeFileSync(USERS_BACKUP_FILE, JSON.stringify(users, null, 2)); } catch(e) {} }
     return;
   }
   users.Blooketstudio = {
     password:'Growgarden1@', displayName:'Blooketstudio', coins:865,
-    tokens:100, xp:0, opened:0, inventory:[], avatar:null, admin:true,
+    tokens:100, opened:0, inventory:[], avatar:null, admin:true,
     banned:false, muted:false, dailyReward:{lastClaim:null,streak:0},
     updatedAt:Date.now()
   };
@@ -125,13 +106,9 @@ const server = http.createServer((req,res)=>{
   if(urlPath === '/api/leaderboard' && req.method === 'GET') {
     const leaderboard=Object.entries(users).map(([username,u])=>({
       username,
-      tokens:Number(u.tokens||0),
-      opened:Number(u.opened||0),
       coins:Number(u.coins||0),
-      xp:Number(u.xp||0),
-      // Leaderboard score is Tokens; EXP is not used for ranking.
-      score:Number(u.tokens||0)
-    })).sort((a,b)=>b.tokens-a.tokens||b.opened-a.opened||b.coins-a.coins||a.username.localeCompare(b.username));
+      opened:Number(u.opened||0)
+    })).sort((a,b)=>b.coins-a.coins||a.username.localeCompare(b.username));
     res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});
     res.end(JSON.stringify({ok:true,leaderboard}));
     return;
@@ -208,47 +185,6 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
       }catch(e){ res.writeHead(400, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify({ok:false,error:e.message})); }
     }); return;
   }
-  // Canonical server-side authentication: accounts are created and checked on the shared server.
-  if(urlPath === '/api/auth/login' && req.method === 'POST') {
-    let body=''; req.on('data', c=>body+=c); req.on('end', ()=>{
-      try {
-        const {username,password}=JSON.parse(body||'{}');
-        const input=String(username||'').trim();
-        const key=Object.keys(users).find(k=>String(k).toLowerCase()===input.toLowerCase());
-        if(!key || !users[key]) throw new Error('Incorrect username or password.');
-        const acc=users[key];
-        if(key.toLowerCase()==='blooketstudio') {
-          if(String(password)!=='Growgarden1@') throw new Error('Incorrect username or password.');
-          acc.password='Growgarden1@'; acc.admin=true;
-        } else if(String(acc.password)!==String(password||'')) throw new Error('Incorrect username or password.');
-        if(acc.banned) throw new Error('This account has been banned.');
-        acc.updatedAt=Date.now(); saveUsers();
-        res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
-        res.end(JSON.stringify({ok:true,username:key,account:acc,users}));
-      } catch(e) {
-        res.writeHead(401,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
-        res.end(JSON.stringify({ok:false,error:e.message}));
-      }
-    }); return;
-  }
-  if(urlPath === '/api/auth/register' && req.method === 'POST') {
-    let body=''; req.on('data', c=>{body+=c; if(body.length>1024*1024) req.destroy();}); req.on('end', ()=>{
-      try {
-        const {username,password}=JSON.parse(body||'{}');
-        const u=String(username||'').trim(), p=String(password||'');
-        if(!/^[A-Za-z0-9_]{3,20}$/.test(u)) throw new Error('Username must be 3–20 characters.');
-        if(p.length<4) throw new Error('Password must be at least 4 characters.');
-        if(Object.keys(users).some(k=>k.toLowerCase()===u.toLowerCase())) throw new Error('That username already exists.');
-        users[u]={password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()};
-        saveUsers();
-        res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
-        res.end(JSON.stringify({ok:true,username:u,account:users[u],users}));
-      } catch(e) {
-        res.writeHead(400,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
-        res.end(JSON.stringify({ok:false,error:e.message}));
-      }
-    }); return;
-  }
   if(urlPath === '/api/users' && req.method === 'GET') {
     res.writeHead(200, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
     return res.end(JSON.stringify({users}));
@@ -269,10 +205,6 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
         let changed = false;
         for (const [username, incomingAccount] of Object.entries(incomingUsers)) {
           if (!incomingAccount || typeof incomingAccount !== 'object') continue;
-          // Security rule: only the canonical Blooketstudio account can ever be admin.
-          // A client/browser must never be able to grant itself admin through /api/users.
-          incomingAccount.admin = String(username).toLowerCase() === 'blooketstudio';
-          if (incomingAccount.admin) incomingAccount.password = 'Growgarden1@';
           const currentAccount = users[username];
           const incomingTime = Number(incomingAccount.updatedAt || 0);
           const currentTime = Number(currentAccount?.updatedAt || 0);
@@ -283,12 +215,6 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
             users[username] = incomingAccount;
             changed = true;
           }
-        }
-        // Final server-side enforcement: Blooketstudio is the only Admin.
-        for (const [name, account] of Object.entries(users)) {
-          if (!account || typeof account !== 'object') continue;
-          account.admin = String(name).toLowerCase() === 'blooketstudio';
-          if (account.admin) account.password = 'Growgarden1@';
         }
         if (changed) saveUsers();
         res.writeHead(200, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});

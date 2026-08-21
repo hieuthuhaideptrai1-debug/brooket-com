@@ -171,6 +171,8 @@ async function loadServerUsers(){
       admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
+      admin.banned = false;
+      admin.muted = !!admin.muted;
       admin.coins=Number(admin.coins ?? 865);
       admin.tokens=Number(admin.tokens ?? 100);
       admin.opened=Number(admin.opened ?? 0);
@@ -656,8 +658,9 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
  for(let n=0;n<qty;n++){
    users[u].inventory.push({id:"blook_"+Date.now()+"_"+Math.random().toString(36).slice(2),pack,item,rarity});
  }
+ users[u].updatedAt=Date.now();
  saveUsers();
- if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
+ if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{});
  if(u===current){account=users[u];renderAll();}
  refreshAdmin();
  $("adminGiveStatus").textContent=`🎁 Gave ${qty} × ${item} (${rarity}) from the ${pack} Pack to ${u}.`;
@@ -680,21 +683,33 @@ if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
    a.coins=infiniteCoins?Infinity:Math.floor(c);a.xp=infiniteTokens?Infinity:Math.floor(t);a.tokens=a.xp;
  }
  a.updatedAt=Date.now(); saveUsers();
+ if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{});
  if(u===current)account=a;
  renderAll();refreshAdmin();alert("Updated "+u);
 };
 if($("adminBan")) $("adminBan").onclick=()=>{
+ // Ban/Unban is Admin-only. Partners keep only Mute + Balance <= 10,000.
  if(!requireAdmin())return;
  const u=selectedModUser();
  if(!u||!users[u])return alert("Select an account.");
- const willBan=!users[u].banned;
- users[u].banned=willBan;
+ const a=users[u];
+ const willBan=!a.banned;
+ const targetLabel = u.toLowerCase()==="blooketstudio" ? "the Blooketstudio account" : "@"+u;
+ if(willBan){
+   const ok=confirm("Are you sure you want to ban "+targetLabel+"?\n\nYou can unban this account later from the same button.");
+   if(!ok)return;
+ }
+ a.banned=willBan;
+ a.updatedAt=Date.now();
  saveUsers();
+ if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{});
  refreshAdmin();
  if(u===current && willBan){
    localStorage.removeItem("pm_current");
    alert("Account @" + u + " has been banned. You will be logged out.");
    location.reload();
+ } else {
+   alert(targetLabel+(willBan?" has been banned.":" has been unbanned."));
  }
 };
 if($("adminMute")) $("adminMute").onclick=()=>{
@@ -706,7 +721,7 @@ if($("adminMute")) $("adminMute").onclick=()=>{
 };
 
 if($("adminRolePlayer")) $("adminRolePlayer").onchange=()=>{ const u=$("adminRolePlayer").value,a=users[u]; if($("adminRoleSelect")&&a) $("adminRoleSelect").value=isAdminAccount(a)?"admin":isPartnerAccount(a)?"partner":"user"; };
-if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The main Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
+if($("adminRoleApply")) $("adminRoleApply").onclick=()=>{ if(!requireAdmin())return; const u=$("adminRolePlayer").value,role=String($("adminRoleSelect").value||"user").toLowerCase(); if(!u||!users[u])return alert("Select an account."); if(u.toLowerCase()==="blooketstudio"&&role!=="admin")return alert("The Blooketstudio account must remain Admin."); const a=users[u]; a.role=role; a.admin=(role==="admin"); a.updatedAt=Date.now(); saveUsers(); if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers()).catch(()=>{}); refreshAdmin(); if(u===current){account=a;update();} alert(`@${u} is now ${role==="admin"?"Admin":role==="partner"?"Partner":"User"}.`); };
 if($("adminForcePlayer")) $("adminForcePlayer").onchange=refreshAdmin;
 if($("adminForceApply")) $("adminForceApply").onclick=()=>{
  if(!requireAdmin())return;

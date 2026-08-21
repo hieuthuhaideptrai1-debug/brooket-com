@@ -1331,3 +1331,40 @@ document.addEventListener('click',e=>{
   const li=(bazaarListings||[])[idx];
   if(li && String(li.seller)===String(current)) bazaarRecall(li.id);
 }); // bazaar-own-card-recall
+
+
+/* Brooket landing Login / Sign Up wiring */
+(function(){
+  function wireBrooketAuth(){
+    const loginBtn=document.getElementById("landingLogin");
+    const signupBtn=document.getElementById("landingRegister");
+    if(loginBtn){
+      loginBtn.type="button";
+      loginBtn.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        const el=document.getElementById("authScreen");
+        if(el) el.classList.remove("hidden");
+        if(typeof setAuthMode==="function") setAuthMode(false);
+        const u=document.getElementById("authUser");
+        if(u) u.focus();
+      };
+    }
+    if(signupBtn){
+      signupBtn.type="button";
+      signupBtn.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        const el=document.getElementById("authScreen");
+        if(el) el.classList.remove("hidden");
+        if(typeof setAuthMode==="function") setAuthMode(true);
+        const u=document.getElementById("authUser");
+        if(u) u.focus();
+      };
+    }
+  }
+  if(document.readyState==="loading")
+    document.addEventListener("DOMContentLoaded",wireBrooketAuth,{once:true});
+  else wireBrooketAuth();
+  window.addEventListener("load",wireBrooketAuth,{once:true});
+})();

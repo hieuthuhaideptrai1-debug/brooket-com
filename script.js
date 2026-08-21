@@ -667,12 +667,19 @@ if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTok
 if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
  if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
+ const partner=isPartnerAccount();
  const infiniteCoins=!!$("adminCoinsInf")?.checked;
  const infiniteTokens=!!$("adminTokensInf")?.checked;
  const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
- if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
- if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞ Infinite EXP.");
- a.coins=infiniteCoins?Infinity:Math.floor(c);a.xp=infiniteTokens?Infinity:Math.floor(t);a.tokens=a.xp;saveUsers();
+ if(partner){
+   if(!Number.isFinite(c)||c<0||c>10000)return alert("Partner balance limit is 10,000 Tokens.");
+   a.coins=Math.floor(c);
+ }else{
+   if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
+   if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞ Infinite EXP.");
+   a.coins=infiniteCoins?Infinity:Math.floor(c);a.xp=infiniteTokens?Infinity:Math.floor(t);a.tokens=a.xp;
+ }
+ a.updatedAt=Date.now(); saveUsers();
  if(u===current)account=a;
  renderAll();refreshAdmin();alert("Updated "+u);
 };

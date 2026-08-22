@@ -46,7 +46,7 @@ function ensureSharedAdminAccount(){
     users[key].password = 'Growgarden1@';
     users[key].admin = true;
     users[key].displayName = users[key].displayName || key;
-    users[key].coins = numericOrInfinity(users[key].tokens ?? users[key].coins, 865);
+    users[key].coins = numericOrInfinity(users[key].coins ?? users[key].tokens, 865);
     users[key].tokens = users[key].coins;
     users[key].exp = numericOrInfinity(users[key].exp, 0);
     users[key].opened = Number(users[key].opened ?? 0);

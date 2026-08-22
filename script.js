@@ -299,13 +299,10 @@ serverUsersReady=loadServerUsers().then(()=>{startAccountSync();return users;});
 function saveUsers(){
   localStorage.setItem("pm_users",JSON.stringify(users,(k,v)=>v===Infinity?"__INF__":v));
   broadcast("users");
-  // Mark the changed account before sending it to the shared root.
-  // This prevents Admin edits from being rejected as an old snapshot.
-  try{ markChangedAccounts(); }catch(e){}
   if(serverUsersReady) serverUsersReady.then(()=>pushServerUsers());
 }
 function save(){ if(account?.inventory) account.inventory=account.inventory.map(normalizeBlookRarity); users[current]=account;saveUsers()}
-function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:865,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
+function makeAccount(u,p){return{password:p,displayName:u,coins:865,tokens:100,opened:0,inventory:[],avatar:null,admin:false,role:"user",banned:false,muted:false,dailyReward:{lastClaim:null,streak:0},updatedAt:Date.now()}}
 const BLOOK_IMAGE_MAP=new Map(sets.flatMap(r=>r).map((item,i)=>[item,"assets/blooks/blook_"+i+".svg"]));
 /* Each pack slot resolves to its own blook_N.svg first, so repeated labels such as 💜 do NOT share an image. */
 const CUSTOM_BLOOK_IMAGES={"Festival Chroma":"assets/blooks/festival-chroma.png","Festival Angelic":"assets/blooks/festival-mythical.png","Festival Untrusted":"assets/blooks/festival-untrusted.png"};
@@ -346,7 +343,7 @@ async function auth(){
   if(serverUsersReady){
    await Promise.race([
     Promise.resolve(serverUsersReady),
-    new Promise(resolve=>setTimeout(resolve,2500))
+    new Promise(resolve=>setTimeout(resolve,5000))
    ]);
   }
  }catch(e){
@@ -739,7 +736,7 @@ if($("adminGiveApply")) $("adminGiveApply").onclick=()=>{
 };
 if($("adminCoinsInf")) $("adminCoinsInf").onchange=()=>{ const inf=$("adminCoinsInf").checked; $("adminCoins").disabled=inf; if(inf) $("adminCoins").value=""; };
 if($("adminTokensInf")) $("adminTokensInf").onchange=()=>{ const inf=$("adminTokensInf").checked; $("adminTokens").disabled=inf; if(inf) $("adminTokens").value=""; };
-if($("adminApplyBalance")) $("adminApplyBalance").onclick=async()=>{
+if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
  if(!requireStaff())return;
  const u=selectedAdminUser(),a=users[u];
  const infiniteCoins=!!$("adminCoinsInf")?.checked;
@@ -755,12 +752,7 @@ if($("adminApplyBalance")) $("adminApplyBalance").onclick=async()=>{
  a.updatedAt=Date.now();
  saveUsers();
  if(u===current)account=a;
- renderAll();refreshAdmin();
- // Force the Admin edit to reach the shared root immediately.
- try{ await pushServerUsers(); }catch(e){}
- try{ await renderSharedLeaderboard(); }catch(e){}
- refreshAdmin();
- alert("Updated "+u);
+ renderAll();refreshAdmin();alert("Updated "+u);
 };
 if($("adminBan")) $("adminBan").onclick=()=>{
  if(!requireAdmin())return;
@@ -1456,4 +1448,32 @@ document.addEventListener('click',e=>{
  window.addEventListener("load",bind);
  setTimeout(bind,300);
  setTimeout(bind,1000);
+})();
+
+
+/* FINAL HARDENED LANDING AUTH */
+(function(){
+  function show(register){
+    var landing=document.getElementById('landingScreen');
+    var auth=document.getElementById('authScreen');
+    if(landing){landing.classList.add('hidden');landing.style.display='none';}
+    if(auth){auth.classList.remove('hidden');auth.style.display='flex';}
+    if(typeof setAuthMode==='function') setAuthMode(!!register);
+    var u=document.getElementById('authUser');
+    if(u) setTimeout(function(){u.focus();},0);
+  }
+  window.brooketShowAuth=show;
+  function bind(){
+    var l=document.getElementById('landingLogin'), r=document.getElementById('landingRegister');
+    if(l) l.onclick=function(e){e.preventDefault();show(false);};
+    if(r) r.onclick=function(e){e.preventDefault();show(true);};
+    var b=document.getElementById('authBtn');
+    if(b) b.onclick=function(e){e.preventDefault(); if(typeof auth==='function') auth();};
+    var sw=document.getElementById('switchAuth');
+    if(sw) sw.onclick=function(e){e.preventDefault();show(!window.__registerMode);};
+    ['authUser','authPass','authPass2'].forEach(function(id){var el=document.getElementById(id);if(el&&!el.__brooketKey){el.__brooketKey=1;el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();if(typeof auth==='function')auth();}});}});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+  window.addEventListener('load',bind);
+  setTimeout(bind,100);setTimeout(bind,1000);
 })();

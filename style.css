@@ -462,3 +462,7 @@ body:after{display:none}
 
 .auth-screen.hidden{display:none!important}
 .landing-screen.hidden{display:none!important}
+
+.credits-panel{position:fixed;inset:0;z-index:10030;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72)}
+.credits-card{position:relative;min-width:320px;max-width:520px;padding:32px;border-radius:18px;background:#101326;color:#fff;text-align:center;box-shadow:0 0 30px rgba(120,80,255,.55)}
+.credits-close{position:absolute;right:12px;top:8px;border:0;background:transparent;color:#fff;font-size:28px;cursor:pointer}

@@ -1478,124 +1478,61 @@ document.addEventListener('click',e=>{
   setTimeout(bind,100);setTimeout(bind,1000);
 })();
 
-
-/* BROOKET AUTH REBUILD — standalone landing/auth controls */
-(function () {
-  "use strict";
-
-  function $(id) { return document.getElementById(id); }
-
-  function showAuth(register) {
-    var landing = $("landingScreen");
-    var authScreen = $("authScreen");
-    if (landing) {
-      landing.classList.add("hidden");
-      landing.style.display = "none";
-    }
-    if (authScreen) {
-      authScreen.classList.remove("hidden");
-      authScreen.style.display = "flex";
-    }
-    window.__registerMode = !!register;
-
-    var title = $("authTitle");
-    var btn = $("authBtn");
-    var sw = $("switchAuth");
-    if (title) title.textContent = register ? "Sign Up" : "Login";
-    if (btn) btn.textContent = register ? "SIGN UP" : "LOG IN";
-    if (sw) sw.textContent = register ? "Already have an account? Login" : "Don't have an account? Sign Up";
-
-    var pass2 = $("authPass2");
-    if (pass2) pass2.style.display = register ? "" : "none";
-
-    var msg = $("authMsg");
-    if (msg) msg.textContent = "";
-
-    var user = $("authUser");
-    if (user) setTimeout(function () { user.focus(); }, 20);
-  }
-
-  function hideAuth() {
-    var landing = $("landingScreen");
-    var authScreen = $("authScreen");
-    if (authScreen) {
-      authScreen.classList.add("hidden");
-      authScreen.style.display = "none";
-    }
-    if (landing) {
-      landing.classList.remove("hidden");
-      landing.style.display = "";
-    }
-  }
-
-  window.brooketShowAuth = showAuth;
-  window.brooketHideAuth = hideAuth;
-
-  function bind() {
-    var login = $("landingLogin");
-    var signup = $("landingRegister");
-
-    if (login) {
-      login.type = "button";
-      login.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        showAuth(false);
-        return false;
-      };
-    }
-
-    if (signup) {
-      signup.type = "button";
-      signup.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        showAuth(true);
-        return false;
-      };
-    }
-
-    var close = $("authClose");
-    if (close) {
-      close.type = "button";
-      close.onclick = function (e) {
-        e.preventDefault();
-        hideAuth();
-      };
-    }
-
-    var switchBtn = $("switchAuth");
-    if (switchBtn) {
-      switchBtn.type = "button";
-      switchBtn.onclick = function (e) {
-        e.preventDefault();
-        showAuth(!window.__registerMode);
-      };
-    }
-
-    var form = $("authForm");
-    if (form && !form.__brooketBound) {
-      form.__brooketBound = true;
-      form.addEventListener("submit", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (typeof window.auth === "function") window.auth();
-        return false;
-      });
-    }
-
-    var button = $("authBtn");
-    if (button) {
-      button.type = "submit";
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bind);
-  } else {
-    bind();
-  }
-  window.addEventListener("load", bind);
-  setTimeout(bind, 100);
-  setTimeout(bind, 500);
+/* BROOKET FINAL AUTH + LOGOUT + CREDITS FIX */
+(function(){
+"use strict";
+function $(id){return document.getElementById(id);}
+function showLanding(){
+ var l=$("landingScreen"),a=$("authScreen");
+ if(a){a.classList.add("hidden");a.style.display="none";}
+ if(l){l.classList.remove("hidden");l.style.display="";}
+ window.__registerMode=false;
+}
+function showAuth(reg){
+ var l=$("landingScreen"),a=$("authScreen");
+ if(l){l.classList.add("hidden");l.style.display="none";}
+ if(a){a.classList.remove("hidden");a.style.display="flex";}
+ window.__registerMode=!!reg;
+ var t=$("authTitle"),b=$("authBtn"),s=$("switchAuth"),p=$("authPass2");
+ if(t)t.textContent=reg?"Sign Up":"Login";
+ if(b)b.textContent=reg?"SIGN UP":"LOG IN";
+ if(s)s.textContent=reg?"Already have an account? Login":"Don't have an account? Sign Up";
+ if(p)p.style.display=reg?"":"none";
+ var m=$("authMsg");if(m)m.textContent="";
+ var u=$("authUser");if(u)setTimeout(function(){u.focus();},30);
+}
+function bind(){
+ var l=$("landingLogin"),r=$("landingRegister");
+ if(l){l.type="button";l.onclick=function(e){e.preventDefault();e.stopPropagation();showAuth(false);return false;};}
+ if(r){r.type="button";r.onclick=function(e){e.preventDefault();e.stopPropagation();showAuth(true);return false;};}
+ var c=$("authClose");if(c)c.onclick=function(e){e.preventDefault();showLanding();};
+ var sw=$("switchAuth");if(sw)sw.onclick=function(e){e.preventDefault();showAuth(!window.__registerMode);};
+ var f=$("authForm");
+ if(f&&!f.__brooketBound){f.__brooketBound=true;f.addEventListener("submit",function(e){e.preventDefault();if(typeof window.auth==="function")window.auth();});}
+ var b=$("authBtn");if(b)b.type="submit";
+}
+document.addEventListener("click",function(e){
+ var el=e.target&&e.target.closest?e.target.closest("#logoutBtn,.logout-btn,[data-action='logout']"):null;
+ if(!el)return;
+ e.preventDefault();e.stopPropagation();
+ try{localStorage.removeItem("currentUser");localStorage.removeItem("brooket_current_user");localStorage.removeItem("brooketCurrentUser");sessionStorage.clear();}catch(_){}
+ try{if(typeof window.logout==="function")window.logout();}catch(_){}
+ setTimeout(showLanding,0);
+},true);
+function credits(){
+ document.querySelectorAll("#creditsBtn,.credits-btn,[data-page='credits'],a[href='#credits']").forEach(function(btn){
+  if(btn.__credits)return;btn.__credits=true;
+  btn.addEventListener("click",function(e){
+   e.preventDefault();
+   var old=$("creditsPanel");if(old){old.style.display="flex";return;}
+   var p=document.createElement("div");p.id="creditsPanel";p.className="credits-panel";
+   p.innerHTML='<div class="credits-card"><button class="credits-close" type="button">×</button><h2>Credits</h2><p><strong>Brooket</strong></p><p>Created by <strong>Blooketstudio</strong></p></div>';
+   document.body.appendChild(p);p.querySelector(".credits-close").onclick=function(){p.remove();};
+  });
+ });
+}
+function all(){bind();credits();}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",all);else all();
+window.addEventListener("load",all);setTimeout(all,200);setTimeout(all,800);
+window.brooketShowAuth=showAuth;window.brooketShowLanding=showLanding;
 })();

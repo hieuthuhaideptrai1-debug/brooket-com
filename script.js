@@ -1477,3 +1477,75 @@ document.addEventListener('click',e=>{
   window.addEventListener('load',bind);
   setTimeout(bind,100);setTimeout(bind,1000);
 })();
+
+
+/* BROOKET FINAL AUTH BRIDGE
+   Landing buttons and auth form are wired independently of server availability. */
+(function(){
+  function byId(id){ return document.getElementById(id); }
+  function show(register){
+    var landing=byId("landingScreen"), screen=byId("authScreen");
+    if(landing){ landing.classList.add("hidden"); landing.style.display="none"; }
+    if(screen){ screen.classList.remove("hidden"); screen.style.display="flex"; }
+    if(typeof setAuthMode==="function") setAuthMode(!!register);
+    var msg=byId("authMsg"); if(msg) msg.textContent="";
+    var u=byId("authUser"); if(u) setTimeout(function(){u.focus();},20);
+  }
+  window.brooketShowAuth=show;
+
+  function bind(){
+    var l=byId("landingLogin"), r=byId("landingRegister");
+    if(l){
+      l.type="button";
+      l.onclick=function(e){e.preventDefault();e.stopPropagation();show(false);return false;};
+    }
+    if(r){
+      r.type="button";
+      r.onclick=function(e){e.preventDefault();e.stopPropagation();show(true);return false;};
+    }
+
+    var form=byId("authForm");
+    if(form && !form.__brooketSubmit){
+      form.__brooketSubmit=true;
+      form.addEventListener("submit",function(e){
+        e.preventDefault();
+        if(typeof auth==="function") auth();
+      });
+    }
+
+    var b=byId("authBtn");
+    if(b){
+      b.type="button";
+      b.onclick=function(e){e.preventDefault();if(typeof auth==="function")auth();};
+    }
+
+    var sw=byId("switchAuth");
+    if(sw){
+      sw.onclick=function(e){
+        e.preventDefault();
+        var reg=!!window.__registerMode;
+        if(typeof setAuthMode==="function") setAuthMode(!reg);
+      };
+    }
+
+    ["authUser","authPass","authPass2"].forEach(function(id){
+      var el=byId(id);
+      if(el && !el.__brooketEnter){
+        el.__brooketEnter=true;
+        el.addEventListener("keydown",function(e){
+          if(e.key==="Enter"){
+            e.preventDefault();
+            if(typeof auth==="function") auth();
+          }
+        });
+      }
+    });
+  }
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bind);
+  else bind();
+  window.addEventListener("load",bind);
+  setTimeout(bind,100);
+  setTimeout(bind,500);
+  setTimeout(bind,1500);
+})();

@@ -1,6 +1,11 @@
 
 const accountApiBase = location.protocol === "file:" ? "http://localhost:3000" : "";
 
+function formatTokenValue(v){
+  if(v === "__INF__" || v === Infinity || v === Number.POSITIVE_INFINITY) return "∞";
+  const n=Number(v);
+  return Number.isFinite(n)?n.toLocaleString():"0";
+}
 async function renderSharedLeaderboard(){
   const el=$("leaderboardContent");
   if(!el)return;
@@ -18,10 +23,10 @@ async function renderSharedLeaderboard(){
     board=Object.entries(users||{}).map(([username,u])=>({
       username,
       opened:Number(u.opened||0),
-      tokens:Number(u.tokens ?? u.coins ?? 0)
+      tokens:(u.coins ?? u.tokens ?? 0)
     })).sort((a,b)=>b.tokens-a.tokens||a.username.localeCompare(b.username));
   }
-  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>🪙 ${Number(x.tokens||0).toLocaleString()} Tokens</b></div>`).join("");
+  el.innerHTML=board.map((x,i)=>`<div class="rank"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span class="rank-player">${getAvatarVisual(x.username)} <span>${escapeHtml(x.username)}${x.username===current?" (You)":""}</span></span><b>🪙 ${formatTokenValue(x.tokens)} Tokens</b></div>`).join("");
 }
 
 
@@ -171,8 +176,8 @@ async function loadServerUsers(){
       admin.role="admin";
       admin.displayName ||= adminKey;
       admin.password="Growgarden1@";
-      admin.coins=Number(admin.coins ?? 865);
-      admin.tokens=Number(admin.tokens ?? 100);
+      admin.coins=(admin.coins === "__INF__" ? Infinity : Number(admin.coins ?? admin.tokens ?? 865));
+      admin.tokens=admin.coins;
       admin.opened=Number(admin.opened ?? 0);
       admin.inventory=Array.isArray(admin.inventory)?admin.inventory:[];
       admin.updatedAt=Number(admin.updatedAt||0);
@@ -402,7 +407,8 @@ function normalizeBlookRarity(x){
 }
 function enter(u){
  current=u;localStorage.setItem("pm_current",u);account=users[u];
- account.tokens ??= 100; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
+ account.coins=(account.coins === "__INF__" ? Infinity : Number(account.coins ?? account.tokens ?? 865));
+ account.tokens=account.coins; account.avatar ??= null; account.admin ??= false; normalizeRole(account); account.banned ??= false; account.muted ??= false;
  account.inventory=Array.isArray(account.inventory)?account.inventory:[];
  account.inventory=account.inventory.map(x=>{x.id??=("blook_"+Date.now()+"_"+Math.random().toString(36).slice(2));return normalizeBlookRarity(x);});
  if(account.avatar && !account.inventory.some(x=>x.id===account.avatar)) account.avatar=null;
@@ -737,8 +743,14 @@ if($("adminApplyBalance")) $("adminApplyBalance").onclick=()=>{
  const infiniteTokens=!!$("adminTokensInf")?.checked;
  const c=Number($("adminCoins").value),t=Number($("adminTokens").value);
  if(!infiniteCoins && (!Number.isFinite(c)||c<0))return alert("Enter a valid Token amount or enable ∞ Infinite Tokens.");
- if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid ESP amount or enable ∞ Infinite ESP.");
- a.coins=infiniteCoins?Infinity:Math.floor(c);a.tokens=infiniteTokens?Infinity:Math.floor(t);saveUsers();
+ if(!infiniteTokens && (!Number.isFinite(t)||t<0))return alert("Enter a valid EXP amount or enable ∞ Infinite EXP.");
+ // Canonical economy fields: coins == Tokens, tokens is kept as a compatibility alias,
+ // and exp is the EXP value. Never put EXP into the Tokens field.
+ a.coins=infiniteCoins?Infinity:Math.floor(c);
+ a.tokens=a.coins;
+ a.exp=infiniteTokens?Infinity:Math.floor(t);
+ a.updatedAt=Date.now();
+ saveUsers();
  if(u===current)account=a;
  renderAll();refreshAdmin();alert("Updated "+u);
 };
@@ -884,6 +896,7 @@ function claimDailyReward(){
   if(s.claimed)return;
   const reward=Math.floor(Math.random()*(DAILY_REWARD_MAX-DAILY_REWARD_MIN+1))+DAILY_REWARD_MIN;
   account.coins=(Number(account.coins)||0)+reward;
+  account.tokens=account.coins;
   account.dailyReward={lastClaim:s.today,streak:0,amount:reward};
   save(); update(); renderDailyRewards();
   alert(`🎁 Daily Reward claimed! +${reward.toLocaleString()} Tokens`);
@@ -906,7 +919,7 @@ function renderAll(){
  const rarestDrop=account.inventory.length ? account.inventory.reduce((best,x)=>!best || (rarityRank[x.rarity]||0)>(rarityRank[best.rarity]||0) ? x : best,null) : null;
  const rarestText=rarestDrop ? `${escapeHtml(rarestDrop.item)} (${escapeHtml(rarestDrop.rarity)})` : "None yet";
  $("statsContent").innerHTML=[
-  ["Tokens Tokens",account.coins.toLocaleString()], ["📦 Packs Opened",account.opened],
+  ["Tokens Tokens",formatTokenValue(account.coins)], ["📦 Packs Opened",account.opened],
   ["🧩 Blooks",account.inventory.length], ["🌈 Intrustdent",intrustdent], ["⭐ Mythics",myth], ["💜 Chroma",chroma],
   ["🏆 Rarest Drop",rarestText]
  ].map(x=>`<div class="card ${x[0].includes("Rarest")?"rarest-drop-card":""}">${x[0]}<b>${x[1]}</b></div>`).join("");
@@ -1226,7 +1239,7 @@ async function bazaarRefresh(){
 
 function renderBazaar(){
   if(!$('bazaarPage')) return;
-  $('bazaarCoins').textContent=Number(account?.coins||0).toLocaleString();
+  $('bazaarCoins').textContent=formatTokenValue(account?.coins||0);
   const listings=bazaarListings;
   $('bazaarListings').innerHTML=listings.length?listings.map(x=>{
     const qty=Math.max(1,Number(x.quantity||1));
@@ -1318,13 +1331,13 @@ async function bazaarBuy(id){
     if(quantity>availableLocal)return alert(`Only ${availableLocal} available.`);
     const total=Number(li.price)*quantity;
     if(Number(account.coins||0)<total)return alert('Not enough Tokens.');
-    account.coins=Number(account.coins||0)-total;account.inventory=Array.isArray(account.inventory)?account.inventory:[];
+    account.coins=Number(account.coins||0)-total;account.tokens=account.coins;account.inventory=Array.isArray(account.inventory)?account.inventory:[];
     for(let i=0;i<quantity;i++)account.inventory.push({id:'blook_'+Date.now()+'_'+Math.random().toString(36).slice(2),item:li.item,rarity:li.rarity,pack:li.pack});
     users[current]=account;localStorage.setItem('pm_users',JSON.stringify(users,(k,v)=>v===Infinity?'__INF__':v));
     syncUsersWithServer(true);
     if(quantity===availableLocal) db.listings=db.listings.filter(x=>x.id!==id);
     else {li.quantity=availableLocal-quantity; if(Array.isArray(li.blookIds))li.blookIds=li.blookIds.slice(quantity);li.blookId=li.blookIds?.[0]||li.blookId;}
-    const seller=users[li.seller];if(seller){seller.coins=Number(seller.coins||0)+total;users[li.seller]=seller;}
+    const seller=users[li.seller];if(seller){seller.coins=Number(seller.coins||0)+total;seller.tokens=seller.coins;users[li.seller]=seller;}
     bazaarLocalWrite(db);bazaarListings=db.listings;update();renderBazaar();alert(`🏪 Bought ${quantity} × ${li.item} for ${total.toLocaleString()} Tokens!`);
   }
 }

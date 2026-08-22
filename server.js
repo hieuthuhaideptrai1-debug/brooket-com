@@ -15,9 +15,15 @@ let bazaar = {listings:[]};
 try { bazaar = JSON.parse(fs.readFileSync(BAZAAR_FILE, 'utf8')); if (!bazaar || !Array.isArray(bazaar.listings)) bazaar={listings:[]}; } catch {}
 function saveBazaar(){ try { fs.writeFileSync(BAZAAR_FILE, JSON.stringify(bazaar, null, 2)); } catch(e) { console.error('bazaar save failed', e.message); } }
 
+function numericOrInfinity(v, fallback=0){
+  if(v === Infinity || v === '__INF__') return Infinity;
+  const n=Number(v);
+  return Number.isFinite(n)?n:fallback;
+}
+function jsonSafe(value){ return JSON.stringify(value,(k,v)=>v===Infinity?'__INF__':v); }
 function readUsersFile(file){
   try {
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'), (k,v)=>v==='__INF__'?Infinity:v);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
   } catch { return null; }
 }
@@ -40,8 +46,9 @@ function ensureSharedAdminAccount(){
     users[key].password = 'Growgarden1@';
     users[key].admin = true;
     users[key].displayName = users[key].displayName || key;
-    users[key].coins = Number(users[key].coins ?? 865);
-    users[key].tokens = Number(users[key].tokens ?? 100);
+    users[key].coins = numericOrInfinity(users[key].coins ?? users[key].tokens, 865);
+    users[key].tokens = users[key].coins;
+    users[key].exp = numericOrInfinity(users[key].exp, 0);
     users[key].opened = Number(users[key].opened ?? 0);
     users[key].inventory = Array.isArray(users[key].inventory) ? users[key].inventory : [];
     changed = before !== JSON.stringify(users[key]);
@@ -50,7 +57,7 @@ function ensureSharedAdminAccount(){
   }
   users.Blooketstudio = {
     password:'Growgarden1@', displayName:'Blooketstudio', coins:865,
-    tokens:100, opened:0, inventory:[], avatar:null, admin:true,
+    tokens:865, exp:0, opened:0, inventory:[], avatar:null, admin:true,
     banned:false, muted:false, dailyReward:{lastClaim:null,streak:0},
     updatedAt:Date.now()
   };
@@ -61,7 +68,7 @@ ensureSharedAdminAccount();
 
 function saveUsers(){
   try {
-    const data = JSON.stringify(users, null, 2);
+    const data = JSON.stringify(users, (k,v)=>v===Infinity?'__INF__':v, 2);
     const tmp = USERS_FILE + '.tmp';
     fs.writeFileSync(tmp, data);
     fs.renameSync(tmp, USERS_FILE);
@@ -106,11 +113,15 @@ const server = http.createServer((req,res)=>{
   if(urlPath === '/api/leaderboard' && req.method === 'GET') {
     const leaderboard=Object.entries(users).map(([username,u])=>({
       username,
-      tokens:Number(u.tokens ?? u.coins ?? 0),
+      tokens:numericOrInfinity(u.coins ?? u.tokens, 0),
       opened:Number(u.opened||0)
-    })).sort((a,b)=>b.tokens-a.tokens||a.username.localeCompare(b.username));
+    })).sort((a,b)=>{
+      const av=a.tokens===Infinity?Number.POSITIVE_INFINITY:Number(a.tokens||0);
+      const bv=b.tokens===Infinity?Number.POSITIVE_INFINITY:Number(b.tokens||0);
+      return bv-av||a.username.localeCompare(b.username);
+    });
     res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});
-    res.end(JSON.stringify({ok:true,leaderboard}));
+    res.end(jsonSafe({ok:true,leaderboard}));
     return;
   }
 
@@ -175,9 +186,9 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
         if(!Number.isFinite(buyQty)||buyQty<1||buyQty>available) throw new Error(`Choose a quantity from 1 to ${available}.`);
         const totalPrice=unitPrice*buyQty;
         if(Number(buyerAcc.coins||0)<totalPrice) throw new Error(`You need ${totalPrice.toLocaleString()} Tokens to buy ${buyQty} Blook${buyQty===1?'':'s'}.`);
-        buyerAcc.coins=Number(buyerAcc.coins||0)-totalPrice; buyerAcc.inventory=Array.isArray(buyerAcc.inventory)?buyerAcc.inventory:[];
+        buyerAcc.coins=Number(buyerAcc.coins||0)-totalPrice; buyerAcc.tokens=buyerAcc.coins; buyerAcc.inventory=Array.isArray(buyerAcc.inventory)?buyerAcc.inventory:[];
         for(let i=0;i<buyQty;i++) buyerAcc.inventory.push({id:'blook_'+Date.now()+'_'+Math.random().toString(36).slice(2),item:li.item,rarity:li.rarity,pack:li.pack});
-        sellerAcc.coins=Number(sellerAcc.coins||0)+totalPrice;
+        sellerAcc.coins=Number(sellerAcc.coins||0)+totalPrice; sellerAcc.tokens=sellerAcc.coins;
         if(buyQty===available) bazaar.listings=bazaar.listings.filter(x=>x.id!==listingId);
         else { li.quantity=available-buyQty; li.blookIds=Array.isArray(li.blookIds)?li.blookIds.slice(buyQty):li.blookIds; li.blookId=li.blookIds?.[0]||li.blookId; }
         saveUsers(); saveBazaar();
@@ -187,7 +198,7 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
   }
   if(urlPath === '/api/users' && req.method === 'GET') {
     res.writeHead(200, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
-    return res.end(JSON.stringify({users}));
+    return res.end(jsonSafe({users}));
   }
   if(urlPath === '/api/users' && req.method === 'POST') {
     // Merge account changes instead of replacing the entire database.
@@ -197,7 +208,7 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
     req.on('data', chunk => { body += chunk; if(body.length > 8 * 1024 * 1024) req.destroy(); });
     req.on('end', ()=>{
       try {
-        const incoming = JSON.parse(body || '{}');
+        const incoming = JSON.parse(body || '{}', (k,v)=>v==='__INF__'?Infinity:v);
         if(!incoming || typeof incoming !== 'object' || !incoming.users || typeof incoming.users !== 'object' || Array.isArray(incoming.users)) {
           throw new Error('Invalid users payload');
         }
@@ -218,7 +229,7 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
         }
         if (changed) saveUsers();
         res.writeHead(200, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-store'});
-        res.end(JSON.stringify({ok:true, count:Object.keys(users).length, users}));
+        res.end(jsonSafe({ok:true, count:Object.keys(users).length, users}));
       } catch(e) {
         res.writeHead(400, {'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});
         res.end(JSON.stringify({ok:false,error:e.message}));
@@ -232,7 +243,7 @@ if(urlPath === '/api/bazaar/buy' && req.method === 'POST') {
     req.on('data', chunk => { body += chunk; if(body.length > 1024 * 1024) req.destroy(); });
     req.on('end', ()=>{
       try {
-        const incoming = JSON.parse(body || '{}');
+        const incoming = JSON.parse(body || '{}', (k,v)=>v==='__INF__'?Infinity:v);
         const username = String(incoming.username || '');
         if (!username || !users[username]) throw new Error('Account not found.');
         delete users[username];
